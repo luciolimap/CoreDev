@@ -6,6 +6,9 @@ out
 .env
 .env.*
 !.env.example
-dist
-out
-node_modules
+
+# workspace-standard
+secrets/*
+!secrets/README.md
+.claude/settings.local.json
+.claude/skills
