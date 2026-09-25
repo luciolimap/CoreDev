@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import '@xterm/xterm/css/xterm.css'
+import 'react-mosaic-component/react-mosaic-component.css'
 import './styles/global.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

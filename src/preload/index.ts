@@ -8,7 +8,8 @@ import type {
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataEvent,
-  PtyExitEvent
+  PtyExitEvent,
+  RecentProjects
 } from '../shared/ipc'
 
 /**
@@ -45,7 +46,10 @@ const hub = {
   project: {
     pickDirectory: (): Promise<ProjectInfo | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.PROJECT_PICK_DIRECTORY),
-    getLast: (): Promise<ProjectInfo | null> => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_GET_LAST)
+    listRecents: (): Promise<RecentProjects> => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_LIST_RECENTS),
+    setActive: (rootPath: string): void => {
+      ipcRenderer.send(IPC_CHANNELS.PROJECT_SET_ACTIVE, rootPath)
+    }
   },
   claude: {
     checkBinary: (): Promise<ClaudeBinaryStatus> =>

@@ -7,8 +7,13 @@ import type { ClaudeBinaryStatus, ProjectInfo } from '../shared/ipc'
 const PREFS_PATH = join(app.getPath('userData'), 'prefs.json')
 
 interface Prefs {
-  lastProjectPath?: string
+  /** Ordem estável de inserção — nunca reordenada ao selecionar (v1: sem "fixar"). */
+  recentProjects?: string[]
+  /** Último projeto ativo, usado só pra restaurar o pane no boot (independe da ordem da sidebar). */
+  lastActiveProject?: string
 }
+
+const MAX_RECENT_PROJECTS = 20
 
 function readPrefs(): Prefs {
   try {
@@ -23,12 +28,26 @@ function writePrefs(prefs: Prefs): void {
   writeFileSync(PREFS_PATH, JSON.stringify(prefs, null, 2), 'utf-8')
 }
 
-export function getLastProjectPath(): string | null {
-  return readPrefs().lastProjectPath ?? null
+/** Ordem de inserção (não de uso); caminhos que não existem mais no disco ficam de fora. */
+export function getRecentProjectPaths(): string[] {
+  return (readPrefs().recentProjects ?? []).filter((p) => existsSync(p))
 }
 
-export function setLastProjectPath(rootPath: string): void {
-  writePrefs({ ...readPrefs(), lastProjectPath: rootPath })
+/** Acrescenta ao fim se ainda não estiver na lista; nunca reordena um já existente. */
+export function addRecentProject(rootPath: string): void {
+  const prefs = readPrefs()
+  const existing = prefs.recentProjects ?? []
+  if (existing.includes(rootPath)) return
+  writePrefs({ ...prefs, recentProjects: [...existing, rootPath].slice(-MAX_RECENT_PROJECTS) })
+}
+
+export function getLastActiveProjectPath(): string | null {
+  const path = readPrefs().lastActiveProject
+  return path && existsSync(path) ? path : null
+}
+
+export function setLastActiveProjectPath(rootPath: string): void {
+  writePrefs({ ...readPrefs(), lastActiveProject: rootPath })
 }
 
 /** Parseia a URL do remote `origin` de um `.git/config` no formato INI. */

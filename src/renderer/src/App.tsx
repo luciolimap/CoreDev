@@ -1,75 +1,144 @@
 import { useCallback, useEffect, useState } from 'react'
+import MosaicRoot from './layout/MosaicRoot'
+import PaneFrame from './layout/PaneFrame'
+import { usePaneStore } from './layout/paneStore'
+import Sidebar from './sidebar/Sidebar'
 import TerminalPanel from './terminal/TerminalPanel'
-import type { ClaudeBinaryStatus, ProjectInfo } from '../../shared/ipc'
+import type { ClaudeBinaryStatus } from '../../shared/ipc'
 
 function App(): React.JSX.Element {
-  const [project, setProject] = useState<ProjectInfo | null>(null)
-  const [loadingLast, setLoadingLast] = useState(true)
+  const [loadingRecents, setLoadingRecents] = useState(true)
   const [claudeStatus, setClaudeStatus] = useState<ClaudeBinaryStatus | null>(null)
+
+  const hydrateRecents = usePaneStore((state) => state.hydrateRecents)
+  const openProject = usePaneStore((state) => state.openProject)
+  const splitFocused = usePaneStore((state) => state.splitFocused)
+  const focusByIndex = usePaneStore((state) => state.focusByIndex)
+  const toggleZoom = usePaneStore((state) => state.toggleZoom)
+  const layout = usePaneStore((state) => state.layout)
+  const panes = usePaneStore((state) => state.panes)
+  const focusedPaneId = usePaneStore((state) => state.focusedPaneId)
+  const zoomedPaneId = usePaneStore((state) => state.zoomedPaneId)
+  const projects = usePaneStore((state) => state.projects)
+  const lastActivePath = usePaneStore((state) => state.lastActivePath)
+
+  const focusedProject = focusedPaneId ? projects[panes[focusedPaneId]?.projectPath ?? ''] : null
 
   useEffect(() => {
     window.hub.claude.checkBinary().then(setClaudeStatus)
   }, [])
 
   useEffect(() => {
-    window.hub.project.getLast().then((p) => {
-      setProject(p)
-      setLoadingLast(false)
+    window.hub.project.listRecents().then((data) => {
+      hydrateRecents(data)
+      setLoadingRecents(false)
     })
-  }, [])
+  }, [hydrateRecents])
+
+  // Abre o último projeto ativo automaticamente assim que a lista e o status
+  // do claude estiverem prontos — só na primeira vez (canvas ainda vazio).
+  useEffect(() => {
+    if (loadingRecents || claudeStatus === null || layout) return
+    const info = lastActivePath ? projects[lastActivePath] : undefined
+    if (info) openProject(info, claudeStatus.available ? 'claude' : undefined)
+  }, [loadingRecents, claudeStatus, layout, lastActivePath, projects, openProject])
 
   const pickProject = useCallback(async (): Promise<void> => {
     const picked = await window.hub.project.pickDirectory()
-    if (picked) setProject(picked)
-  }, [])
+    if (picked) openProject(picked, claudeStatus?.available ? 'claude' : undefined)
+  }, [openProject, claudeStatus])
 
-  // Espera os dois carregamentos: sem claudeStatus resolvido, o TerminalPanel
-  // não pode montar ainda, senão o bootCommand chega tarde demais pro
-  // primeiro spawn (ver TerminalPanel.tsx).
-  if (loadingLast || claudeStatus === null) {
+  // Atalhos: Ctrl/Cmd+Shift+Enter zoom, Ctrl/Cmd+1..9 foca painel por índice.
+  useEffect((): (() => void) => {
+    function onKeyDown(event: KeyboardEvent): void {
+      const mod = event.metaKey || event.ctrlKey
+      if (!mod) return
+      if (event.key === 'Enter' && event.shiftKey) {
+        event.preventDefault()
+        if (focusedPaneId) toggleZoom(focusedPaneId)
+        return
+      }
+      if (/^[1-9]$/.test(event.key)) {
+        event.preventDefault()
+        focusByIndex(Number(event.key) - 1)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [focusedPaneId, toggleZoom, focusByIndex])
+
+  if (loadingRecents || claudeStatus === null) {
     return <div className="app-shell-empty" />
   }
 
-  if (!project) {
-    return (
-      <div className="app-shell-empty">
-        <div className="empty-state">
-          <h1>CoreDev</h1>
-          <p>Selecione a pasta de um projeto para começar.</p>
-          <button onClick={pickProject}>Adicionar projeto</button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="app-shell">
-      <header className="toolbar">
-        <button className="toolbar-project" onClick={pickProject} title="Trocar de projeto">
-          {project.name}
-        </button>
-        {project.ghOwner && project.ghRepo && (
-          <span className="toolbar-repo">
-            {project.ghOwner}/{project.ghRepo}
-          </span>
-        )}
-      </header>
-      {!claudeStatus.available && (
-        <div className="claude-missing-banner">
-          Binário <code>claude</code> não encontrado no PATH.{' '}
-          <a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noreferrer">
-            Instruções de instalação
-          </a>
-          .
+    <div className="app-root">
+      <Sidebar onAddProject={pickProject} claudeAvailable={claudeStatus.available} />
+      {!layout ? (
+        <div className="app-shell-empty">
+          <div className="empty-state">
+            <h1>CoreDev</h1>
+            <p>Selecione a pasta de um projeto para começar.</p>
+            <button onClick={pickProject}>Adicionar projeto</button>
+          </div>
+        </div>
+      ) : (
+        <div className="app-shell">
+          <header className="toolbar">
+            {focusedProject && (
+              <>
+                <span className="toolbar-project">{focusedProject.name}</span>
+                {focusedProject.ghOwner && focusedProject.ghRepo && (
+                  <span className="toolbar-repo">
+                    {focusedProject.ghOwner}/{focusedProject.ghRepo}
+                  </span>
+                )}
+              </>
+            )}
+            <div className="toolbar-spacer" />
+            <button
+              className="toolbar-icon-btn"
+              title="Novo terminal no mesmo projeto (horizontal)"
+              onClick={() => splitFocused('row')}
+            >
+              ⬓
+            </button>
+            <button
+              className="toolbar-icon-btn"
+              title="Novo terminal no mesmo projeto (vertical)"
+              onClick={() => splitFocused('column')}
+            >
+              ⬒
+            </button>
+          </header>
+          {!claudeStatus.available && (
+            <div className="claude-missing-banner">
+              Binário <code>claude</code> não encontrado no PATH.{' '}
+              <a
+                href="https://docs.claude.com/en/docs/claude-code"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Instruções de instalação
+              </a>
+              .
+            </div>
+          )}
+          <div className="app-terminal-area">
+            {zoomedPaneId ? (
+              <PaneFrame paneId={zoomedPaneId}>
+                <TerminalPanel
+                  paneId={zoomedPaneId}
+                  cwd={panes[zoomedPaneId]?.cwd}
+                  bootCommand={panes[zoomedPaneId]?.bootCommand}
+                />
+              </PaneFrame>
+            ) : (
+              <MosaicRoot />
+            )}
+          </div>
         </div>
       )}
-      <div className="app-terminal-area">
-        {claudeStatus.available ? (
-          <TerminalPanel paneId={project.rootPath} cwd={project.rootPath} bootCommand="claude" />
-        ) : (
-          <TerminalPanel paneId={project.rootPath} cwd={project.rootPath} />
-        )}
-      </div>
     </div>
   )
 }

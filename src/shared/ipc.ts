@@ -61,6 +61,13 @@ export interface ClaudeBinaryStatus {
   path: string | null
 }
 
+export interface RecentProjects {
+  /** Ordem estável de inserção — a sidebar nunca reordena ao selecionar. */
+  projects: ProjectInfo[]
+  /** Último projeto ativo antes de fechar; usado só pra restaurar o pane no boot. */
+  lastActivePath: string | null
+}
+
 export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:getInfo',
   PTY_SPAWN: 'pty:spawn',
@@ -70,6 +77,7 @@ export const IPC_CHANNELS = {
   PTY_DATA: 'pty:data',
   PTY_EXIT: 'pty:exit',
   PROJECT_PICK_DIRECTORY: 'project:pickDirectory',
-  PROJECT_GET_LAST: 'project:getLast',
+  PROJECT_LIST_RECENTS: 'project:listRecents',
+  PROJECT_SET_ACTIVE: 'project:setActive',
   CLAUDE_CHECK_BINARY: 'claude:checkBinary'
 } as const

@@ -2,7 +2,6 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
-import { WebglAddon } from '@xterm/addon-webgl'
 
 /**
  * Registro de instâncias de terminal fora do ciclo de vida do React.
@@ -54,11 +53,9 @@ export function acquireTerminal(paneId: string): TerminalEntry {
 
     term.open(el) // abre no elemento órfão, ainda sem pai no DOM real
 
-    try {
-      term.loadAddon(new WebglAddon())
-    } catch {
-      // sem WebGL disponível (ou contexto perdido): segue no renderer canvas padrão
-    }
+    // WebglAddon desativado por ora: causava corrupção visual (glifo/cursor
+    // em posição errada logo após foco) — renderer canvas padrão é mais lento
+    // em saída volumosa, mas correto. Reavaliar na Fase 5 (R2 do ROADMAP).
 
     entry = { term, fit, search, el, ptyId: null, spawnPromise: null }
     registry.set(paneId, entry)
@@ -80,6 +77,17 @@ export function getPtyId(paneId: string): string | null {
 export function setPtyId(paneId: string, ptyId: string | null): void {
   const entry = registry.get(paneId)
   if (entry) entry.ptyId = ptyId
+}
+
+/**
+ * Foca a textarea interna do xterm.js explicitamente. Clicar num pane
+ * também dispara `focusPane` (estado do zustand) no mesmo mousedown; sem
+ * essa chamada explícita, a corrida entre o re-render disparado por esse
+ * `set()` e o próprio listener de foco do xterm.js podia comer a primeira
+ * tecla digitada (ela chegava antes da textarea estar de fato focada).
+ */
+export function focusTerminal(paneId: string): void {
+  registry.get(paneId)?.term.focus()
 }
 
 /**

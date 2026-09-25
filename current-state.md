@@ -6,19 +6,23 @@ Atualizado: 2026-09-25
 
 ## Agora
 
-- Fase 0, Fase 1 e uma primeira versão da Fase 2 (Claude Code integrado) concluídas. Selecionar a
-  pasta do projeto já detecta o repo (`gh_owner`/`gh_repo`), lembra o último projeto aberto e o
-  terminal sobe automaticamente rodando `claude` no diretório certo (sem botão manual). Sem binário
-  `claude` no PATH, mostra aviso com link de instalação em vez de travar.
+- Fase 0, 1, 2 (v1) e uma primeira versão da Fase 3 concluídas. Sidebar lista os projetos já
+  abertos (ordem estável de inserção, sem reordenar ao clicar); cada projeto tem seu terminal com
+  `claude` já rodando. O canvas é único e compartilhado: panes de projetos diferentes convivem lado
+  a lado via `react-mosaic-component` (split horizontal/vertical, fechar, zoom
+  `Ctrl/Cmd+Shift+Enter`, foco por `Ctrl/Cmd+1..9`), e trocar de foco não mata o pty dos outros —
+  cada terminal continua rodando em segundo plano (`terminalRegistry.ts`, DOM órfão reparentável).
+- Corrigido bug de digitação: o addon WebGL do xterm.js causava corrupção visual (glifo/cursor
+  errado logo após o foco); desativado, renderer canvas padrão no lugar.
 - Workspace migrado para o padrão `workspace-standard`.
 
 ## Frentes abertas
 
-- Seção de seleção/troca de projeto marcada para "re-polir" depois (UI ainda crua, é v1).
-- Próximas fases do `ROADMAP.md`: Fase 3 (abas e split view), Fase 4 (SessionStore/SQLite), Fase 6
-  (GitHubService).
+- Sidebar ainda sem "fixar no topo" (pedido explícito, adiado).
+- Próximas fases do `ROADMAP.md`: Fase 4 (SessionStore/SQLite — hoje só `prefs.json` com lista de
+  projetos recentes), Fase 6 (GitHubService).
 
 ## Próximo passo
 
-- Retomar a implementação a partir da Fase 3 do `ROADMAP.md`, ou polir a UI da Fase 2 se preferir
-  fechar essa frente primeiro.
+- Retomar a implementação a partir da Fase 4 do `ROADMAP.md`, ou seguir polindo a Fase 3
+  (fixar projeto na sidebar, arrastar painel entre projetos) se preferir fechar essa frente antes.

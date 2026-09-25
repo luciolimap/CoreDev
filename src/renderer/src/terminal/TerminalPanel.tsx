@@ -4,9 +4,9 @@ import type { PtySpawnRequest } from '../../../shared/ipc'
 
 interface TerminalPanelProps {
   paneId: string
-  cwd?: string
+  cwd?: string | undefined
   /** Comando escrito no pty logo após um spawn novo (não em reconexão a um pty existente). */
-  bootCommand?: string
+  bootCommand?: string | undefined
 }
 
 const RESIZE_DEBOUNCE_MS = 100

@@ -1,8 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { existsSync } from 'fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { IPC_CHANNELS, type AppInfo, type ProjectInfo } from '../shared/ipc'
+import { IPC_CHANNELS, type AppInfo, type ProjectInfo, type RecentProjects } from '../shared/ipc'
 import type {
   PtySpawnRequest,
   PtySpawnResponse,
@@ -11,7 +10,14 @@ import type {
   PtyKillRequest
 } from '../shared/ipc'
 import { PtyManager } from './ptyManager'
-import { checkClaudeBinary, detectRepo, getLastProjectPath, setLastProjectPath } from './projectService'
+import {
+  addRecentProject,
+  checkClaudeBinary,
+  detectRepo,
+  getLastActiveProjectPath,
+  getRecentProjectPaths,
+  setLastActiveProjectPath
+} from './projectService'
 
 let mainWindow: BrowserWindow | null = null
 const ptyManager = new PtyManager(() => mainWindow?.webContents ?? null)
@@ -34,7 +40,6 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
-    if (is.dev) mainWindow?.webContents.openDevTools({ mode: 'detach' })
   })
 
   mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
@@ -89,14 +94,20 @@ app.whenReady().then(() => {
     const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] })
     const rootPath = result.filePaths[0]
     if (result.canceled || !rootPath) return null
-    setLastProjectPath(rootPath)
+    addRecentProject(rootPath)
+    setLastActiveProjectPath(rootPath)
     return detectRepo(rootPath)
   })
 
-  ipcMain.handle(IPC_CHANNELS.PROJECT_GET_LAST, (): ProjectInfo | null => {
-    const lastPath = getLastProjectPath()
-    if (!lastPath || !existsSync(lastPath)) return null
-    return detectRepo(lastPath)
+  ipcMain.handle(IPC_CHANNELS.PROJECT_LIST_RECENTS, (): RecentProjects => {
+    return {
+      projects: getRecentProjectPaths().map((rootPath) => detectRepo(rootPath)),
+      lastActivePath: getLastActiveProjectPath()
+    }
+  })
+
+  ipcMain.on(IPC_CHANNELS.PROJECT_SET_ACTIVE, (_event, rootPath: string) => {
+    setLastActiveProjectPath(rootPath)
   })
 
   ipcMain.handle(IPC_CHANNELS.CLAUDE_CHECK_BINARY, () => checkClaudeBinary())
