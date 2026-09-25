@@ -3,6 +3,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 import { IPC_CHANNELS } from '../shared/ipc'
 import type {
   AppInfo,
+  ClaudeBinaryStatus,
+  ProjectInfo,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataEvent,
@@ -39,6 +41,15 @@ const hub = {
       ipcRenderer.on(IPC_CHANNELS.PTY_EXIT, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.PTY_EXIT, listener)
     }
+  },
+  project: {
+    pickDirectory: (): Promise<ProjectInfo | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.PROJECT_PICK_DIRECTORY),
+    getLast: (): Promise<ProjectInfo | null> => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_GET_LAST)
+  },
+  claude: {
+    checkBinary: (): Promise<ClaudeBinaryStatus> =>
+      ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_CHECK_BINARY)
   }
 }
 

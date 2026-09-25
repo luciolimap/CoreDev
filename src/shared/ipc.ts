@@ -49,6 +49,18 @@ export interface PtyExitEvent {
   signal?: number
 }
 
+export interface ProjectInfo {
+  rootPath: string
+  name: string
+  ghOwner: string | null
+  ghRepo: string | null
+}
+
+export interface ClaudeBinaryStatus {
+  available: boolean
+  path: string | null
+}
+
 export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:getInfo',
   PTY_SPAWN: 'pty:spawn',
@@ -56,5 +68,8 @@ export const IPC_CHANNELS = {
   PTY_RESIZE: 'pty:resize',
   PTY_KILL: 'pty:kill',
   PTY_DATA: 'pty:data',
-  PTY_EXIT: 'pty:exit'
+  PTY_EXIT: 'pty:exit',
+  PROJECT_PICK_DIRECTORY: 'project:pickDirectory',
+  PROJECT_GET_LAST: 'project:getLast',
+  CLAUDE_CHECK_BINARY: 'claude:checkBinary'
 } as const

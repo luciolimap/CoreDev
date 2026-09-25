@@ -1,7 +1,8 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { IPC_CHANNELS, type AppInfo } from '../shared/ipc'
+import { IPC_CHANNELS, type AppInfo, type ProjectInfo } from '../shared/ipc'
 import type {
   PtySpawnRequest,
   PtySpawnResponse,
@@ -10,6 +11,7 @@ import type {
   PtyKillRequest
 } from '../shared/ipc'
 import { PtyManager } from './ptyManager'
+import { checkClaudeBinary, detectRepo, getLastProjectPath, setLastProjectPath } from './projectService'
 
 let mainWindow: BrowserWindow | null = null
 const ptyManager = new PtyManager(() => mainWindow?.webContents ?? null)
@@ -81,6 +83,23 @@ app.whenReady().then(() => {
   ipcMain.handle(IPC_CHANNELS.PTY_KILL, (_event, req: PtyKillRequest) => {
     ptyManager.kill(req.ptyId)
   })
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_PICK_DIRECTORY, async (): Promise<ProjectInfo | null> => {
+    if (!mainWindow) return null
+    const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] })
+    const rootPath = result.filePaths[0]
+    if (result.canceled || !rootPath) return null
+    setLastProjectPath(rootPath)
+    return detectRepo(rootPath)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_GET_LAST, (): ProjectInfo | null => {
+    const lastPath = getLastProjectPath()
+    if (!lastPath || !existsSync(lastPath)) return null
+    return detectRepo(lastPath)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CLAUDE_CHECK_BINARY, () => checkClaudeBinary())
 
   createWindow()
 

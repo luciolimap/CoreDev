@@ -5,9 +5,15 @@ import type { PtySpawnRequest } from '../../../shared/ipc'
 interface TerminalPanelProps {
   paneId: string
   cwd?: string
+  /** Comando escrito no pty logo após um spawn novo (não em reconexão a um pty existente). */
+  bootCommand?: string
 }
 
 const RESIZE_DEBOUNCE_MS = 100
+// Tempo dado ao shell pra terminar de avaliar o profile antes de escrever o
+// bootCommand. Heurística simples (ROADMAP.md §6.3, fallback de quiescência);
+// uma sentinela OSC é a solução robusta, mas fica para a Fase 5.
+const BOOT_COMMAND_DELAY_MS = 300
 
 function spawnRequest(
   paneId: string,
@@ -18,7 +24,7 @@ function spawnRequest(
   return cwd === undefined ? { paneId, cols, rows } : { paneId, cwd, cols, rows }
 }
 
-function TerminalPanel({ paneId, cwd }: TerminalPanelProps): React.JSX.Element {
+function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const [exited, setExited] = useState<{ exitCode: number } | null>(null)
 
@@ -33,7 +39,17 @@ function TerminalPanel({ paneId, cwd }: TerminalPanelProps): React.JSX.Element {
     entry.fit.fit()
 
     const { cols, rows } = entry.term
-    void ensureSpawned(paneId, () => window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows)))
+    const wasAlreadySpawned = getPtyId(paneId) !== null
+    let bootTimer: ReturnType<typeof setTimeout> | null = null
+    void ensureSpawned(paneId, () =>
+      window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows))
+    ).then((ptyId) => {
+      if (!wasAlreadySpawned && bootCommand) {
+        bootTimer = setTimeout(() => {
+          window.hub.pty.write(ptyId, `${bootCommand}\r`)
+        }, BOOT_COMMAND_DELAY_MS)
+      }
+    })
 
     const unsubData = window.hub.pty.onData(({ ptyId, chunk }) => {
       if (ptyId === getPtyId(paneId)) entry.term.write(chunk)
@@ -60,12 +76,17 @@ function TerminalPanel({ paneId, cwd }: TerminalPanelProps): React.JSX.Element {
 
     return (): void => {
       if (resizeTimer) clearTimeout(resizeTimer)
+      if (bootTimer) clearTimeout(bootTimer)
       resizeObserver.disconnect()
       unsubData()
       unsubExit()
       onData.dispose()
       entry.el.remove() // reparenta pra fora — não destrói a instância
     }
+    // bootCommand não entra nas deps: só importa no primeiro spawn deste
+    // paneId (App.tsx só monta o painel depois que bootCommand já é
+    // conhecido — ver App.tsx). Mudar só o bootCommand não deve reiniciar
+    // o pty nem reescrever o comando numa sessão já em andamento.
   }, [paneId, cwd])
 
   async function handleRestart(): Promise<void> {
@@ -76,7 +97,12 @@ function TerminalPanel({ paneId, cwd }: TerminalPanelProps): React.JSX.Element {
     const entry = acquireTerminal(paneId)
     entry.term.reset()
     const { cols, rows } = entry.term
-    await ensureSpawned(paneId, () => window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows)))
+    const newPtyId = await ensureSpawned(paneId, () =>
+      window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows))
+    )
+    if (bootCommand) {
+      setTimeout(() => window.hub.pty.write(newPtyId, `${bootCommand}\r`), BOOT_COMMAND_DELAY_MS)
+    }
   }
 
   return (

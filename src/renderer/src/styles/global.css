@@ -32,6 +32,90 @@ body {
   padding: 8px;
 }
 
+.app-shell-empty {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.empty-state h1 {
+  color: var(--text);
+  font-size: 22px;
+  margin: 0;
+}
+
+.empty-state button {
+  background: var(--accent);
+  color: #12141a;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.app-shell {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.toolbar-project {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toolbar-repo {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.claude-missing-banner {
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.claude-missing-banner a {
+  color: var(--accent);
+}
+
+.app-terminal-area {
+  flex: 1;
+  min-height: 0;
+}
+
 .terminal-panel {
   position: relative;
   height: 100%;
