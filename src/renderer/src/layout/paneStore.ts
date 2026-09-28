@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createRemoveUpdate, getLeaves, updateTree } from 'react-mosaic-component'
 import type { MosaicDirection, MosaicNode } from 'react-mosaic-component'
-import type { ProjectInfo } from '../../../shared/ipc'
+import type { PaneKind, ProjectInfo, SessionSnapshot } from '../../../shared/ipc'
 import { getPtyId, releaseTerminal } from '../terminal/terminalRegistry'
 import { findPanePath } from './mosaicTree'
 
@@ -10,6 +10,7 @@ export interface PaneMeta {
   bootCommand?: string | undefined
   /** Projeto dono deste pane — usado pra achar/focar o pane de um projeto a partir da sidebar. */
   projectPath: string
+  kind: PaneKind
 }
 
 interface PaneStoreState {
@@ -27,6 +28,8 @@ interface PaneStoreState {
   zoomedPaneId: string | null
 
   hydrateRecents: (data: { projects: ProjectInfo[]; lastActivePath: string | null }) => void
+  /** Restaura layout e panes de uma sessão anterior; tem precedência sobre o auto-open. */
+  hydrateSession: (snapshot: SessionSnapshot) => void
   /** Foca o pane do projeto se já existir no canvas; senão cria um (split do pane focado). */
   openProject: (info: ProjectInfo, bootCommand?: string) => void
   setLayout: (layout: MosaicNode<string> | null) => void
@@ -77,6 +80,15 @@ export const usePaneStore = create<PaneStoreState>((set, get) => ({
     set({ projects: byPath, order, lastActivePath })
   },
 
+  hydrateSession: ({ layout, panes, focusedPaneId, zoomedPaneId }): void => {
+    set({
+      layout: layout as MosaicNode<string> | null,
+      panes,
+      focusedPaneId,
+      zoomedPaneId
+    })
+  },
+
   openProject: (info, bootCommand): void => {
     window.hub.project.setActive(info.rootPath)
     const { panes, layout, focusedPaneId, projects, order } = get()
@@ -90,7 +102,12 @@ export const usePaneStore = create<PaneStoreState>((set, get) => ({
     }
 
     const newPaneId = crypto.randomUUID()
-    const newMeta: PaneMeta = { cwd: info.rootPath, bootCommand, projectPath: info.rootPath }
+    const newMeta: PaneMeta = {
+      cwd: info.rootPath,
+      bootCommand,
+      projectPath: info.rootPath,
+      kind: 'terminal'
+    }
 
     if (!layout || !focusedPaneId) {
       set({
@@ -128,7 +145,11 @@ export const usePaneStore = create<PaneStoreState>((set, get) => ({
       layout: newLayout,
       panes: {
         ...panes,
-        [newPaneId]: { cwd: focusedMeta.cwd, projectPath: focusedMeta.projectPath }
+        [newPaneId]: {
+          cwd: focusedMeta.cwd,
+          projectPath: focusedMeta.projectPath,
+          kind: 'terminal'
+        }
       },
       focusedPaneId: newPaneId
     })

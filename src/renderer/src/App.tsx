@@ -2,15 +2,18 @@ import { useCallback, useEffect, useState } from 'react'
 import MosaicRoot from './layout/MosaicRoot'
 import PaneFrame from './layout/PaneFrame'
 import { usePaneStore } from './layout/paneStore'
+import { startSessionSync } from './layout/sessionSync'
 import Sidebar from './sidebar/Sidebar'
 import TerminalPanel from './terminal/TerminalPanel'
 import type { ClaudeBinaryStatus } from '../../shared/ipc'
 
 function App(): React.JSX.Element {
   const [loadingRecents, setLoadingRecents] = useState(true)
+  const [sessionChecked, setSessionChecked] = useState(false)
   const [claudeStatus, setClaudeStatus] = useState<ClaudeBinaryStatus | null>(null)
 
   const hydrateRecents = usePaneStore((state) => state.hydrateRecents)
+  const hydrateSession = usePaneStore((state) => state.hydrateSession)
   const openProject = usePaneStore((state) => state.openProject)
   const splitFocused = usePaneStore((state) => state.splitFocused)
   const focusByIndex = usePaneStore((state) => state.focusByIndex)
@@ -35,13 +38,26 @@ function App(): React.JSX.Element {
     })
   }, [hydrateRecents])
 
+  // A sessão anterior tem precedência sobre o auto-open: só depois de saber
+  // que não há layout salvo é que o último projeto ativo é aberto sozinho.
+  // O autosave só liga aqui, senão o estado vazio do boot sobrescreveria o arquivo.
+  useEffect((): (() => void) | undefined => {
+    let stop: (() => void) | undefined
+    window.hub.session.load().then((snapshot) => {
+      if (snapshot?.layout) hydrateSession(snapshot)
+      setSessionChecked(true)
+      stop = startSessionSync()
+    })
+    return () => stop?.()
+  }, [hydrateSession])
+
   // Abre o último projeto ativo automaticamente assim que a lista e o status
   // do claude estiverem prontos — só na primeira vez (canvas ainda vazio).
   useEffect(() => {
-    if (loadingRecents || claudeStatus === null || layout) return
+    if (!sessionChecked || loadingRecents || claudeStatus === null || layout) return
     const info = lastActivePath ? projects[lastActivePath] : undefined
     if (info) openProject(info, claudeStatus.available ? 'claude' : undefined)
-  }, [loadingRecents, claudeStatus, layout, lastActivePath, projects, openProject])
+  }, [sessionChecked, loadingRecents, claudeStatus, layout, lastActivePath, projects, openProject])
 
   const pickProject = useCallback(async (): Promise<void> => {
     const picked = await window.hub.project.pickDirectory()
@@ -67,7 +83,7 @@ function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [focusedPaneId, toggleZoom, focusByIndex])
 
-  if (loadingRecents || claudeStatus === null) {
+  if (loadingRecents || claudeStatus === null || !sessionChecked) {
     return <div className="app-shell-empty" />
   }
 
