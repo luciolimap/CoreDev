@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import MosaicRoot from './layout/MosaicRoot'
 import PaneFrame from './layout/PaneFrame'
 import { usePaneStore } from './layout/paneStore'
+import CommandPalette from './palette/CommandPalette'
 import { renderPaneContent } from './layout/renderPane'
 import { startSessionSync } from './layout/sessionSync'
 import Sidebar from './sidebar/Sidebar'
@@ -10,6 +11,7 @@ import type { ClaudeBinaryStatus } from '../../shared/ipc'
 function App(): React.JSX.Element {
   const [loadingRecents, setLoadingRecents] = useState(true)
   const [sessionChecked, setSessionChecked] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [claudeStatus, setClaudeStatus] = useState<ClaudeBinaryStatus | null>(null)
 
   const hydrateRecents = usePaneStore((state) => state.hydrateRecents)
@@ -70,6 +72,11 @@ function App(): React.JSX.Element {
     function onKeyDown(event: KeyboardEvent): void {
       const mod = event.metaKey || event.ctrlKey
       if (!mod) return
+      if (event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setPaletteOpen((open) => !open)
+        return
+      }
       if (event.key === 'Enter' && event.shiftKey) {
         event.preventDefault()
         if (focusedPaneId) toggleZoom(focusedPaneId)
@@ -90,6 +97,9 @@ function App(): React.JSX.Element {
 
   return (
     <div className="app-root">
+      {paletteOpen && (
+        <CommandPalette onClose={() => setPaletteOpen(false)} onAddProject={pickProject} />
+      )}
       <Sidebar onAddProject={pickProject} claudeAvailable={claudeStatus.available} />
       {!layout ? (
         <div className="app-shell-empty">

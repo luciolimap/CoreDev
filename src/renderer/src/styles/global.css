@@ -467,3 +467,62 @@ body {
 .github-pane-error a {
   color: var(--accent);
 }
+
+/* Paleta de comandos */
+
+.palette-backdrop {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgb(0 0 0 / 45%);
+  inset: 0;
+}
+
+.palette {
+  display: flex;
+  overflow: hidden;
+  width: min(560px, 90vw);
+  height: fit-content;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 50%);
+}
+
+.palette-input {
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.palette-list {
+  max-height: 320px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.palette-item {
+  padding: 8px 10px;
+  border-radius: 5px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.palette-item-selected {
+  background: var(--border);
+}
+
+.palette-empty {
+  color: var(--text-dim);
+  cursor: default;
+}
