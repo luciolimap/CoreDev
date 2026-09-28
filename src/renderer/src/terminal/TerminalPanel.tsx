@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { acquireTerminal, ensureSpawned, getPtyId, setPtyId } from './terminalRegistry'
+import { acquireTerminal, claimRestore, ensureSpawned, getPtyId, setPtyId } from './terminalRegistry'
 import type { PtySpawnRequest } from '../../../shared/ipc'
 
 interface TerminalPanelProps {
@@ -14,6 +14,13 @@ const RESIZE_DEBOUNCE_MS = 100
 // bootCommand. Heurística simples (ROADMAP.md §6.3, fallback de quiescência);
 // uma sentinela OSC é a solução robusta, mas fica para a Fase 5.
 const BOOT_COMMAND_DELAY_MS = 300
+
+function previousSessionSeparator(): string {
+  const when = new Date().toLocaleString()
+  return `
+[2m─── fim da sessão anterior · ${when} ───[0m
+`
+}
 
 function spawnRequest(
   paneId: string,
@@ -41,15 +48,27 @@ function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.
     const { cols, rows } = entry.term
     const wasAlreadySpawned = getPtyId(paneId) !== null
     let bootTimer: ReturnType<typeof setTimeout> | null = null
-    void ensureSpawned(paneId, () =>
-      window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows))
-    ).then((ptyId) => {
-      if (!wasAlreadySpawned && bootCommand) {
-        bootTimer = setTimeout(() => {
-          window.hub.pty.write(ptyId, `${bootCommand}\r`)
-        }, BOOT_COMMAND_DELAY_MS)
-      }
-    })
+    // O scrollback da sessão anterior entra antes do spawn: escrever depois
+    // disputaria a tela com a saída do shell novo.
+    const restored = claimRestore(paneId)
+      ? window.hub.session.loadScrollback(paneId).then((data) => {
+          if (!data) return
+          entry.term.write(data)
+          entry.term.write(previousSessionSeparator())
+        })
+      : Promise.resolve()
+
+    void restored
+      .then(() =>
+        ensureSpawned(paneId, () => window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows)))
+      )
+      .then((ptyId) => {
+        if (!wasAlreadySpawned && bootCommand) {
+          bootTimer = setTimeout(() => {
+            window.hub.pty.write(ptyId, `${bootCommand}\r`)
+          }, BOOT_COMMAND_DELAY_MS)
+        }
+      })
 
     const unsubData = window.hub.pty.onData(({ ptyId, chunk }) => {
       if (ptyId === getPtyId(paneId)) entry.term.write(chunk)

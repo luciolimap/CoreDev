@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { SESSION_VERSION, type SessionSnapshot } from '../shared/ipc'
-import { loadSession, saveSession } from './sessionStore'
+import { loadScrollback, loadSession, pruneScrollback, saveScrollback, saveSession } from './sessionStore'
 
 let dir: string
 
@@ -48,4 +48,30 @@ test('JSON corrompido devolve null em vez de lançar', () => {
 test('snapshot de outra versão é descartado', () => {
   saveSession(dir, { ...snapshot, version: SESSION_VERSION + 1 })
   expect(loadSession(dir)).toBeNull()
+})
+
+test('scrollback acima do cap guarda o fim, nao o comeco', () => {
+  const data = 'x'.repeat(300 * 1024) + 'FIM'
+  saveScrollback(dir, 'pane-1', data)
+  const read = loadScrollback(dir, 'pane-1')
+  expect(read?.endsWith('FIM')).toBe(true)
+  expect(read?.length).toBe(256 * 1024)
+})
+
+test('scrollback de pane inexistente devolve null', () => {
+  expect(loadScrollback(dir, 'nao-existe')).toBeNull()
+})
+
+test('prune apaga so o scrollback de panes que sairam do layout', () => {
+  saveScrollback(dir, 'vivo', 'a')
+  saveScrollback(dir, 'morto', 'b')
+  pruneScrollback(dir, ['vivo'])
+  expect(loadScrollback(dir, 'vivo')).toBe('a')
+  expect(loadScrollback(dir, 'morto')).toBeNull()
+})
+
+test('paneId com caracteres de caminho nao escapa do diretorio', () => {
+  saveScrollback(dir, '../fuga', 'a')
+  expect(loadScrollback(dir, '../fuga')).toBe('a')
+  expect(existsSync(join(dir, '..', 'fuga.txt'))).toBe(false)
 })

@@ -2,6 +2,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
+import { SerializeAddon } from '@xterm/addon-serialize'
 
 /**
  * Registro de instâncias de terminal fora do ciclo de vida do React.
@@ -19,9 +20,12 @@ interface TerminalEntry {
   term: Terminal
   fit: FitAddon
   search: SearchAddon
+  serialize: SerializeAddon
   el: HTMLDivElement
   ptyId: string | null
   spawnPromise: Promise<string> | null
+  /** O scrollback da sessão anterior só é escrito uma vez, no primeiro mount deste pane. */
+  restored: boolean
 }
 
 const registry = new Map<string, TerminalEntry>()
@@ -47,8 +51,10 @@ export function acquireTerminal(paneId: string): TerminalEntry {
 
     const fit = new FitAddon()
     const search = new SearchAddon()
+    const serialize = new SerializeAddon()
     term.loadAddon(fit)
     term.loadAddon(search)
+    term.loadAddon(serialize)
     term.loadAddon(new WebLinksAddon())
 
     term.open(el) // abre no elemento órfão, ainda sem pai no DOM real
@@ -57,7 +63,7 @@ export function acquireTerminal(paneId: string): TerminalEntry {
     // em posição errada logo após foco) — renderer canvas padrão é mais lento
     // em saída volumosa, mas correto. Reavaliar na Fase 5 (R2 do ROADMAP).
 
-    entry = { term, fit, search, el, ptyId: null, spawnPromise: null }
+    entry = { term, fit, search, serialize, el, ptyId: null, spawnPromise: null, restored: false }
     registry.set(paneId, entry)
   }
   return entry
@@ -115,4 +121,24 @@ export function ensureSpawned(
       })
   }
   return entry.spawnPromise
+}
+
+/**
+ * Marca o pane como já restaurado e diz se a restauração cabe agora. Remontagens
+ * (arrastar painel, zoom) chamam `acquireTerminal` de novo; sem esta trava, o
+ * scrollback da sessão anterior seria reescrito por cima da sessão em andamento.
+ */
+export function claimRestore(paneId: string): boolean {
+  const entry = registry.get(paneId)
+  if (!entry || entry.restored || entry.ptyId !== null) return false
+  entry.restored = true
+  return true
+}
+
+export function serializePane(paneId: string): string | null {
+  return registry.get(paneId)?.serialize.serialize() ?? null
+}
+
+export function paneIds(): string[] {
+  return [...registry.keys()]
 }

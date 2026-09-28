@@ -6,6 +6,7 @@ import {
   type AppInfo,
   type ProjectInfo,
   type RecentProjects,
+  type ScrollbackWriteRequest,
   type SessionSnapshot
 } from '../shared/ipc'
 import type {
@@ -16,7 +17,13 @@ import type {
   PtyKillRequest
 } from '../shared/ipc'
 import { PtyManager } from './ptyManager'
-import { loadSession, saveSession } from './sessionStore'
+import {
+  loadScrollback,
+  loadSession,
+  pruneScrollback,
+  saveScrollback,
+  saveSession
+} from './sessionStore'
 import {
   addRecentProject,
   checkClaudeBinary,
@@ -124,7 +131,17 @@ app.whenReady().then(() => {
   )
 
   ipcMain.on(IPC_CHANNELS.SESSION_SAVE, (_event, snapshot: SessionSnapshot) => {
-    saveSession(app.getPath('userData'), snapshot)
+    const dir = app.getPath('userData')
+    saveSession(dir, snapshot)
+    pruneScrollback(dir, Object.keys(snapshot.panes))
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SESSION_LOAD_SCROLLBACK, (_event, paneId: string): string | null =>
+    loadScrollback(app.getPath('userData'), paneId)
+  )
+
+  ipcMain.on(IPC_CHANNELS.SESSION_SAVE_SCROLLBACK, (_event, req: ScrollbackWriteRequest) => {
+    saveScrollback(app.getPath('userData'), req.paneId, req.data)
   })
 
   createWindow()

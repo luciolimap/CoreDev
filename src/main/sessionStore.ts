@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync
+} from 'fs'
 import { join } from 'path'
 import { SESSION_VERSION, type SessionSnapshot } from '../shared/ipc'
 
@@ -52,4 +60,43 @@ export function saveSession(dir: string, snapshot: SessionSnapshot): void {
 export function clearSession(dir: string): void {
   const target = sessionPath(dir)
   if (existsSync(target)) unlinkSync(target)
+}
+
+/**
+ * Scrollback por pane, um arquivo por pane.
+ *
+ * Fica fora do `session.json` de propósito: o layout é gravado a cada meio
+ * segundo e o scrollback só a cada 15 s — juntos, o arquivo pequeno pagaria o
+ * preço de serializar centenas de kilobytes a cada arrastada de painel.
+ */
+const SCROLLBACK_DIR = 'scrollback'
+const SCROLLBACK_CAP_BYTES = 256 * 1024
+
+function scrollbackPath(dir: string, paneId: string): string {
+  return join(dir, SCROLLBACK_DIR, `${encodeURIComponent(paneId)}.txt`)
+}
+
+export function saveScrollback(dir: string, paneId: string, data: string): void {
+  mkdirSync(join(dir, SCROLLBACK_DIR), { recursive: true })
+  // Corta o começo, não o fim: o que interessa ao retomar é o que aconteceu por último.
+  const capped = data.length > SCROLLBACK_CAP_BYTES ? data.slice(-SCROLLBACK_CAP_BYTES) : data
+  writeFileSync(scrollbackPath(dir, paneId), capped, 'utf-8')
+}
+
+export function loadScrollback(dir: string, paneId: string): string | null {
+  try {
+    return readFileSync(scrollbackPath(dir, paneId), 'utf-8')
+  } catch {
+    return null
+  }
+}
+
+/** Apaga o scrollback de panes que não existem mais, senão o diretório cresce para sempre. */
+export function pruneScrollback(dir: string, livePaneIds: string[]): void {
+  const scrollbackDir = join(dir, SCROLLBACK_DIR)
+  if (!existsSync(scrollbackDir)) return
+  const live = new Set(livePaneIds.map((id) => `${encodeURIComponent(id)}.txt`))
+  for (const file of readdirSync(scrollbackDir)) {
+    if (!live.has(file)) unlinkSync(join(scrollbackDir, file))
+  }
 }

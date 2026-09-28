@@ -56,6 +56,11 @@ const hub = {
     load: (): Promise<SessionSnapshot | null> => ipcRenderer.invoke(IPC_CHANNELS.SESSION_LOAD),
     save: (snapshot: SessionSnapshot): void => {
       ipcRenderer.send(IPC_CHANNELS.SESSION_SAVE, snapshot)
+    },
+    loadScrollback: (paneId: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SESSION_LOAD_SCROLLBACK, paneId),
+    saveScrollback: (paneId: string, data: string): void => {
+      ipcRenderer.send(IPC_CHANNELS.SESSION_SAVE_SCROLLBACK, { paneId, data })
     }
   },
   claude: {
