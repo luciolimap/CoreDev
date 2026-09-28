@@ -1,6 +1,6 @@
 import { Mosaic } from 'react-mosaic-component'
-import TerminalPanel from '../terminal/TerminalPanel'
 import PaneFrame from './PaneFrame'
+import { renderPaneContent } from './renderPane'
 import { usePaneStore } from './paneStore'
 
 function MosaicRoot(): React.JSX.Element {
@@ -13,14 +13,7 @@ function MosaicRoot(): React.JSX.Element {
       value={layout}
       onChange={setLayout}
       renderTile={(paneId): React.JSX.Element => (
-        <PaneFrame paneId={paneId}>
-          <TerminalPanel
-            paneId={paneId}
-            cwd={panes[paneId]?.cwd}
-            fallbackCwd={panes[paneId]?.projectPath}
-            bootCommand={panes[paneId]?.bootCommand}
-          />
-        </PaneFrame>
+        <PaneFrame paneId={paneId}>{renderPaneContent(paneId, panes[paneId])}</PaneFrame>
       )}
     />
   )

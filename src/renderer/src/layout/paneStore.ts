@@ -32,6 +32,8 @@ interface PaneStoreState {
   hydrateSession: (snapshot: SessionSnapshot) => void
   /** Foca o pane do projeto se já existir no canvas; senão cria um (split do pane focado). */
   openProject: (info: ProjectInfo, bootCommand?: string) => void
+  /** Cria um pane novo para o projeto (split do focado) e devolve o id criado. */
+  addPane: (projectPath: string, kind: PaneKind, bootCommand?: string) => string
   setLayout: (layout: MosaicNode<string> | null) => void
   splitFocused: (direction: MosaicDirection) => void
   closePane: (paneId: string) => void
@@ -129,6 +131,26 @@ export const usePaneStore = create<PaneStoreState>((set, get) => ({
       panes: { ...panes, [newPaneId]: newMeta },
       focusedPaneId: newPaneId
     })
+  },
+
+  addPane: (projectPath, kind, bootCommand): string => {
+    const { panes, layout, focusedPaneId } = get()
+    const newPaneId = crypto.randomUUID()
+    const meta: PaneMeta = { cwd: projectPath, bootCommand, projectPath, kind }
+
+    if (!layout || !focusedPaneId) {
+      set({ layout: newPaneId, panes: { ...panes, [newPaneId]: meta }, focusedPaneId: newPaneId })
+      return newPaneId
+    }
+
+    const newLayout = splitLeaf(layout, focusedPaneId, 'row', newPaneId)
+    if (!newLayout) return focusedPaneId
+    set({
+      layout: newLayout,
+      panes: { ...panes, [newPaneId]: meta },
+      focusedPaneId: newPaneId
+    })
+    return newPaneId
   },
 
   setLayout: (layout): void => set({ layout }),

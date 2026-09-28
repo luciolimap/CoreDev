@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import MosaicRoot from './layout/MosaicRoot'
 import PaneFrame from './layout/PaneFrame'
 import { usePaneStore } from './layout/paneStore'
+import { renderPaneContent } from './layout/renderPane'
 import { startSessionSync } from './layout/sessionSync'
 import Sidebar from './sidebar/Sidebar'
-import TerminalPanel from './terminal/TerminalPanel'
 import type { ClaudeBinaryStatus } from '../../shared/ipc'
 
 function App(): React.JSX.Element {
@@ -16,6 +16,7 @@ function App(): React.JSX.Element {
   const hydrateSession = usePaneStore((state) => state.hydrateSession)
   const openProject = usePaneStore((state) => state.openProject)
   const splitFocused = usePaneStore((state) => state.splitFocused)
+  const addPane = usePaneStore((state) => state.addPane)
   const focusByIndex = usePaneStore((state) => state.focusByIndex)
   const toggleZoom = usePaneStore((state) => state.toggleZoom)
   const layout = usePaneStore((state) => state.layout)
@@ -112,6 +113,15 @@ function App(): React.JSX.Element {
               </>
             )}
             <div className="toolbar-spacer" />
+            {focusedProject?.ghOwner && focusedProject?.ghRepo && (
+              <button
+                className="toolbar-icon-btn"
+                title={`Painel do GitHub (${focusedProject.ghOwner}/${focusedProject.ghRepo})`}
+                onClick={() => addPane(focusedProject.rootPath, 'github')}
+              >
+                ⑂
+              </button>
+            )}
             <button
               className="toolbar-icon-btn"
               title="Novo terminal no mesmo projeto (horizontal)"
@@ -143,12 +153,7 @@ function App(): React.JSX.Element {
           <div className="app-terminal-area">
             {zoomedPaneId ? (
               <PaneFrame paneId={zoomedPaneId}>
-                <TerminalPanel
-                  paneId={zoomedPaneId}
-                  cwd={panes[zoomedPaneId]?.cwd}
-                  fallbackCwd={panes[zoomedPaneId]?.projectPath}
-                  bootCommand={panes[zoomedPaneId]?.bootCommand}
-                />
+                {renderPaneContent(zoomedPaneId, panes[zoomedPaneId])}
               </PaneFrame>
             ) : (
               <MosaicRoot />
