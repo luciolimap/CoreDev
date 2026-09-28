@@ -59,6 +59,12 @@ function listProjects(): RecentProjects {
   }
 }
 
+// O stdout pode fechar antes do app (em dev, com a saída canalizada para outro
+// processo que termina primeiro). Sem isto, o EPIPE de um `console.log` sobe como
+// exceção não tratada e o Electron mata a janela com um diálogo de erro.
+process.stdout.on('error', () => {})
+process.stderr.on('error', () => {})
+
 let mainWindow: BrowserWindow | null = null
 const ptyManager = new PtyManager(() => mainWindow?.webContents ?? null)
 
