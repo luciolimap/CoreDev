@@ -79,5 +79,48 @@ export const IPC_CHANNELS = {
   PROJECT_PICK_DIRECTORY: 'project:pickDirectory',
   PROJECT_LIST_RECENTS: 'project:listRecents',
   PROJECT_SET_ACTIVE: 'project:setActive',
-  CLAUDE_CHECK_BINARY: 'claude:checkBinary'
+  CLAUDE_CHECK_BINARY: 'claude:checkBinary',
+  SESSION_LOAD: 'session:load',
+  SESSION_SAVE: 'session:save',
+  SESSION_LOAD_SCROLLBACK: 'session:loadScrollback',
+  SESSION_SAVE_SCROLLBACK: 'session:saveScrollback'
 } as const
+
+/**
+ * Espelho estrutural do `MosaicNode<string>` do react-mosaic. Existe para o
+ * processo main persistir o layout sem depender de uma lib de UI do renderer.
+ */
+export type LayoutNode =
+  | string
+  | {
+      type: 'split'
+      direction: 'row' | 'column'
+      children: LayoutNode[]
+      splitPercentages?: number[]
+    }
+  | { type: 'tabs'; tabs: string[]; activeTabIndex: number }
+
+export type PaneKind = 'terminal' | 'github'
+
+export interface PaneSnapshot {
+  cwd: string
+  bootCommand?: string | undefined
+  projectPath: string
+  kind: PaneKind
+}
+
+/** Versão do formato do `session.json`; snapshot de outra versão é descartado no boot. */
+export const SESSION_VERSION = 1
+
+export interface SessionSnapshot {
+  version: number
+  layout: LayoutNode | null
+  panes: Record<string, PaneSnapshot>
+  focusedPaneId: string | null
+  zoomedPaneId: string | null
+}
+
+export interface ScrollbackWriteRequest {
+  paneId: string
+  data: string
+}

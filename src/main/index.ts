@@ -1,7 +1,13 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { IPC_CHANNELS, type AppInfo, type ProjectInfo, type RecentProjects } from '../shared/ipc'
+import {
+  IPC_CHANNELS,
+  type AppInfo,
+  type ProjectInfo,
+  type RecentProjects,
+  type SessionSnapshot
+} from '../shared/ipc'
 import type {
   PtySpawnRequest,
   PtySpawnResponse,
@@ -10,6 +16,7 @@ import type {
   PtyKillRequest
 } from '../shared/ipc'
 import { PtyManager } from './ptyManager'
+import { loadSession, saveSession } from './sessionStore'
 import {
   addRecentProject,
   checkClaudeBinary,
@@ -111,6 +118,14 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle(IPC_CHANNELS.CLAUDE_CHECK_BINARY, () => checkClaudeBinary())
+
+  ipcMain.handle(IPC_CHANNELS.SESSION_LOAD, (): SessionSnapshot | null =>
+    loadSession(app.getPath('userData'))
+  )
+
+  ipcMain.on(IPC_CHANNELS.SESSION_SAVE, (_event, snapshot: SessionSnapshot) => {
+    saveSession(app.getPath('userData'), snapshot)
+  })
 
   createWindow()
 

@@ -9,7 +9,8 @@ import type {
   PtySpawnResponse,
   PtyDataEvent,
   PtyExitEvent,
-  RecentProjects
+  RecentProjects,
+  SessionSnapshot
 } from '../shared/ipc'
 
 /**
@@ -49,6 +50,12 @@ const hub = {
     listRecents: (): Promise<RecentProjects> => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_LIST_RECENTS),
     setActive: (rootPath: string): void => {
       ipcRenderer.send(IPC_CHANNELS.PROJECT_SET_ACTIVE, rootPath)
+    }
+  },
+  session: {
+    load: (): Promise<SessionSnapshot | null> => ipcRenderer.invoke(IPC_CHANNELS.SESSION_LOAD),
+    save: (snapshot: SessionSnapshot): void => {
+      ipcRenderer.send(IPC_CHANNELS.SESSION_SAVE, snapshot)
     }
   },
   claude: {
