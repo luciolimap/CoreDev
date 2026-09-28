@@ -31,6 +31,19 @@ const SHELL_READY_TIMEOUT_MS = 3000
  */
 const RESTART_BOOT_DELAY_MS = 1000
 
+/**
+ * Empurra a sessao restaurada para o scrollback antes de o pty novo atacar a tela.
+ *
+ * Duas coisas conspiram contra restaurar direto na viewport: o dump do
+ * `SerializeAddon` traz a posicao do cursor da sessao antiga, e no Windows o
+ * ConPTY repinta a area visivel com posicionamento absoluto, assumindo que a
+ * tela e so dele. As duas escrevem por cima do que acabou de ser restaurado.
+ * Acima da viewport nenhuma das duas alcanca, e o usuario le rolando para cima.
+ */
+function pushToScrollback(rows: number): string {
+  return `\r\n`.repeat(rows)
+}
+
 function previousSessionSeparator(): string {
   const when = new Date().toLocaleString()
   return `\r\n\x1b[2m─── fim da sessão anterior · ${when} ───\x1b[0m\r\n`
@@ -97,6 +110,7 @@ function TerminalPanel({
           if (!data) return
           entry.term.write(data)
           entry.term.write(previousSessionSeparator())
+          entry.term.write(pushToScrollback(entry.term.rows))
         })
       : Promise.resolve()
 
