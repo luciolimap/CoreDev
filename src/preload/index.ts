@@ -4,6 +4,9 @@ import { IPC_CHANNELS } from '../shared/ipc'
 import type {
   AppInfo,
   ClaudeBinaryStatus,
+  GhIssue,
+  GhPullRequest,
+  GhResult,
   ProjectInfo,
   PtySpawnRequest,
   PtySpawnResponse,
@@ -69,6 +72,12 @@ const hub = {
     saveScrollback: (paneId: string, data: string): void => {
       ipcRenderer.send(IPC_CHANNELS.SESSION_SAVE_SCROLLBACK, { paneId, data })
     }
+  },
+  github: {
+    listPulls: (repo: string): Promise<GhResult<GhPullRequest>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GITHUB_LIST_PULLS, repo),
+    listIssues: (repo: string): Promise<GhResult<GhIssue>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GITHUB_LIST_ISSUES, repo)
   },
   claude: {
     checkBinary: (): Promise<ClaudeBinaryStatus> =>

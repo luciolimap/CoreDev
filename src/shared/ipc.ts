@@ -88,6 +88,8 @@ export const IPC_CHANNELS = {
   PROJECT_LIST_RECENTS: 'project:listRecents',
   PROJECT_SET_ACTIVE: 'project:setActive',
   CLAUDE_CHECK_BINARY: 'claude:checkBinary',
+  GITHUB_LIST_PULLS: 'github:listPulls',
+  GITHUB_LIST_ISSUES: 'github:listIssues',
   SESSION_LOAD: 'session:load',
   SESSION_SAVE: 'session:save',
   SESSION_LOAD_SCROLLBACK: 'session:loadScrollback',
@@ -127,6 +129,32 @@ export interface SessionSnapshot {
   focusedPaneId: string | null
   zoomedPaneId: string | null
 }
+
+export type CiStatus = 'success' | 'failure' | 'pending' | 'none'
+
+export interface GhPullRequest {
+  number: number
+  title: string
+  author: string
+  headRefName: string
+  ci: CiStatus
+}
+
+export interface GhIssue {
+  number: number
+  title: string
+  author: string
+  labels: string[]
+}
+
+/** Erro do `gh` chega tipado para a UI oferecer a acao certa, nao um painel vazio. */
+export interface GhFailure {
+  ok: false
+  reason: 'missing' | 'unauthenticated' | 'failed'
+  message: string
+}
+
+export type GhResult<T> = { ok: true; items: T[] } | GhFailure
 
 export interface ScrollbackWriteRequest {
   paneId: string

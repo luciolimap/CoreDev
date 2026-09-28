@@ -17,6 +17,7 @@ import type {
   PtyKillRequest
 } from '../shared/ipc'
 import { PtyManager } from './ptyManager'
+import { listIssues, listPullRequests } from './githubService'
 import {
   loadScrollback,
   loadSession,
@@ -125,6 +126,10 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle(IPC_CHANNELS.CLAUDE_CHECK_BINARY, () => checkClaudeBinary())
+
+  ipcMain.handle(IPC_CHANNELS.GITHUB_LIST_PULLS, (_event, repo: string) => listPullRequests(repo))
+
+  ipcMain.handle(IPC_CHANNELS.GITHUB_LIST_ISSUES, (_event, repo: string) => listIssues(repo))
 
   ipcMain.handle(IPC_CHANNELS.SESSION_LOAD, (): SessionSnapshot | null =>
     loadSession(app.getPath('userData'))
