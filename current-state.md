@@ -1,28 +1,36 @@
 # Estado atual — coredev
 
-Atualizado: 2026-09-25
+Atualizado: 2026-09-28
 
 <!-- Fotografia, não diário: reescreva o que mudou. Cada frente em 3 a 5 linhas, com o link da spec. -->
 
 ## Agora
 
-- Fase 0, 1, 2 (v1) e uma primeira versão da Fase 3 concluídas. Sidebar lista os projetos já
-  abertos (ordem estável de inserção, sem reordenar ao clicar); cada projeto tem seu terminal com
-  `claude` já rodando. O canvas é único e compartilhado: panes de projetos diferentes convivem lado
-  a lado via `react-mosaic-component` (split horizontal/vertical, fechar, zoom
-  `Ctrl/Cmd+Shift+Enter`, foco por `Ctrl/Cmd+1..9`), e trocar de foco não mata o pty dos outros —
-  cada terminal continua rodando em segundo plano (`terminalRegistry.ts`, DOM órfão reparentável).
-- Corrigido bug de digitação: o addon WebGL do xterm.js causava corrupção visual (glifo/cursor
-  errado logo após o foco); desativado, renderer canvas padrão no lugar.
-- Workspace migrado para o padrão `workspace-standard`.
+- Fases 0 a 6 do `ROADMAP.md` concluídas, e a Fase 7 em parte. O app cumpre a promessa
+  central: fecha no meio de uma sessão e reabre com o mesmo layout, o mesmo scrollback, o
+  mesmo `cwd` e o `claude` rodando de novo. Spec: `specs/2026-09-28-fases-4-a-7.md`.
+- Persistência em JSON no `userData` (`session.json` + `scrollback/<paneId>.txt`), não em
+  SQLite — ver `decisions/2026-09-28-persistencia-em-json.md`. Autosave do layout com
+  debounce de 500 ms; scrollback a cada 15 s e no `beforeunload`.
+- `cwd` rastreado por OSC 7 (`src/main/osc7.ts`); sem OSC 7 no shell, vale o `cwd` do spawn.
+  `cwd` que sumiu do disco cai no diretório do projeto e depois no home, com aviso no terminal.
+  O `bootCommand` sai por quiescência da saída do shell (250 ms de silêncio, teto de 3 s).
+- Painel de GitHub pelo `gh` CLI (PRs com status de CI, issues, checkout no terminal do
+  projeto) — ver `decisions/2026-09-28-github-pelo-gh-cli.md`. Sem device flow, sem token
+  guardado, sem Octokit.
+- Paleta de comandos em `Ctrl/Cmd+K` e fixar projeto no topo da sidebar.
 
 ## Frentes abertas
 
-- Sidebar ainda sem "fixar no topo" (pedido explícito, adiado).
-- Próximas fases do `ROADMAP.md`: Fase 4 (SessionStore/SQLite — hoje só `prefs.json` com lista de
-  projetos recentes), Fase 6 (GitHubService).
+- Aceite manual das fases 4 a 7 ainda não rodado ponta a ponta (a confirmar):
+  `specs/2026-09-28-fases-4-a-7.md`.
+- Fase 7 incompleta de propósito: sem assinatura de código, sem auto-update, sem tela de
+  preferências, sem export/import de configuração. As duas primeiras exigem certificado
+  Authenticode e conta Apple paga.
+- Arrastar painel entre projetos continua fora.
 
 ## Próximo passo
 
-- Retomar a implementação a partir da Fase 4 do `ROADMAP.md`, ou seguir polindo a Fase 3
-  (fixar projeto na sidebar, arrastar painel entre projetos) se preferir fechar essa frente antes.
+- Rodar o aceite da spec das fases 4 a 7 e corrigir o que aparecer.
+- Depois: tela de preferências e export/import de configuração, ou assinatura de código
+  quando houver certificado.
