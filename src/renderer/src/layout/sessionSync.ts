@@ -1,5 +1,5 @@
 import { SESSION_VERSION, type LayoutNode, type SessionSnapshot } from '../../../shared/ipc'
-import { paneIds, serializePane } from '../terminal/terminalRegistry'
+import { getTrackedCwd, paneIds, serializePane, setCwdByPtyId } from '../terminal/terminalRegistry'
 import { usePaneStore } from './paneStore'
 
 /**
@@ -19,10 +19,17 @@ let timer: ReturnType<typeof setTimeout> | null = null
 
 function currentSnapshot(): SessionSnapshot {
   const { layout, panes, focusedPaneId, zoomedPaneId } = usePaneStore.getState()
+  // O `cwd` salvo é o rastreado por OSC 7, não o do spawn: o usuário fecha o app
+  // no subdiretório em que estava trabalhando, não na raiz do projeto.
+  const panesWithCwd: typeof panes = {}
+  for (const [paneId, meta] of Object.entries(panes)) {
+    const tracked = getTrackedCwd(paneId)
+    panesWithCwd[paneId] = tracked ? { ...meta, cwd: tracked } : meta
+  }
   return {
     version: SESSION_VERSION,
     layout: (layout ?? null) as LayoutNode | null,
-    panes,
+    panes: panesWithCwd,
     focusedPaneId,
     zoomedPaneId
   }
@@ -56,10 +63,12 @@ export function startSessionSync(): () => void {
     if (timer) clearTimeout(timer)
     timer = setTimeout(flushSession, SAVE_DEBOUNCE_MS)
   })
+  const unsubscribeCwd = window.hub.pty.onCwd(({ ptyId, cwd }) => setCwdByPtyId(ptyId, cwd))
   const scrollbackTimer = setInterval(saveAllScrollback, SCROLLBACK_SAVE_INTERVAL_MS)
   window.addEventListener('beforeunload', flushSession)
   return () => {
     unsubscribe()
+    unsubscribeCwd()
     clearInterval(scrollbackTimer)
     window.removeEventListener('beforeunload', flushSession)
   }

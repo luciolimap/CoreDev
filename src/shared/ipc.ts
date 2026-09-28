@@ -49,6 +49,11 @@ export interface PtyExitEvent {
   signal?: number
 }
 
+export interface PtyCwdEvent {
+  ptyId: string
+  cwd: string
+}
+
 export interface ProjectInfo {
   rootPath: string
   name: string
@@ -76,6 +81,7 @@ export const IPC_CHANNELS = {
   PTY_KILL: 'pty:kill',
   PTY_DATA: 'pty:data',
   PTY_EXIT: 'pty:exit',
+  PTY_CWD: 'pty:cwd',
   PROJECT_PICK_DIRECTORY: 'project:pickDirectory',
   PROJECT_LIST_RECENTS: 'project:listRecents',
   PROJECT_SET_ACTIVE: 'project:setActive',

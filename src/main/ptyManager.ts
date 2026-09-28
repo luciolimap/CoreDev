@@ -3,7 +3,8 @@ import os from 'os'
 import type { IPty } from 'node-pty'
 import * as pty from 'node-pty'
 import type { WebContents } from 'electron'
-import type { PtyDataEvent, PtyExitEvent } from '../shared/ipc'
+import type { PtyCwdEvent, PtyDataEvent, PtyExitEvent } from '../shared/ipc'
+import { parseOsc7Cwd } from './osc7'
 import { IPC_CHANNELS } from '../shared/ipc'
 
 interface PtyEntry {
@@ -73,6 +74,12 @@ export class PtyManager {
     this.ptys.set(ptyId, entry)
 
     proc.onData((chunk) => {
+      const announced = parseOsc7Cwd(chunk)
+      if (announced && announced !== entry.cwd) {
+        entry.cwd = announced
+        const event: PtyCwdEvent = { ptyId, cwd: announced }
+        this.getWebContents()?.send(IPC_CHANNELS.PTY_CWD, event)
+      }
       entry.pendingChunks.push(chunk)
       entry.pendingBytes += chunk.length
       this.ensureFlushLoop()

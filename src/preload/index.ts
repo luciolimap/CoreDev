@@ -7,6 +7,7 @@ import type {
   ProjectInfo,
   PtySpawnRequest,
   PtySpawnResponse,
+  PtyCwdEvent,
   PtyDataEvent,
   PtyExitEvent,
   RecentProjects,
@@ -36,6 +37,12 @@ const hub = {
         callback(payload)
       ipcRenderer.on(IPC_CHANNELS.PTY_DATA, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.PTY_DATA, listener)
+    },
+    onCwd: (callback: (event: PtyCwdEvent) => void): (() => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, payload: PtyCwdEvent): void =>
+        callback(payload)
+      ipcRenderer.on(IPC_CHANNELS.PTY_CWD, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.PTY_CWD, listener)
     },
     onExit: (callback: (event: PtyExitEvent) => void): (() => void) => {
       const listener = (_e: Electron.IpcRendererEvent, payload: PtyExitEvent): void =>

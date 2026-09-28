@@ -139,6 +139,26 @@ export function serializePane(paneId: string): string | null {
   return registry.get(paneId)?.serialize.serialize() ?? null
 }
 
+/**
+ * `cwd` anunciado por OSC 7, indexado por pane. Mora aqui e não no store porque
+ * muda a cada `cd` — um `set()` do zustand por linha de prompt re-renderizaria
+ * o canvas inteiro à toa.
+ */
+const cwdByPane = new Map<string, string>()
+
+export function setCwdByPtyId(ptyId: string, cwd: string): void {
+  for (const [paneId, entry] of registry) {
+    if (entry.ptyId === ptyId) {
+      cwdByPane.set(paneId, cwd)
+      return
+    }
+  }
+}
+
+export function getTrackedCwd(paneId: string): string | null {
+  return cwdByPane.get(paneId) ?? null
+}
+
 export function paneIds(): string[] {
   return [...registry.keys()]
 }
