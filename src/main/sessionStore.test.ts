@@ -9,7 +9,8 @@ import {
   loadSession,
   pruneScrollback,
   saveScrollback,
-  saveSession
+  saveSession,
+  trimTrailingBlankLines
 } from './sessionStore'
 
 let dir: string
@@ -92,4 +93,17 @@ test('o corte anda ate o proximo escape para nao partir uma sequencia ANSI', () 
 
 test('scrollback sem escape nenhum e cortado pelo tamanho', () => {
   expect(capScrollback('y'.repeat(300 * 1024)).length).toBe(256 * 1024)
+})
+
+
+test('linhas vazias do fim do dump nao viram bloco em branco', () => {
+  const crlf = '\r\n'
+  const data = 'PS C:\\dev>' + crlf.repeat(20)
+  expect(trimTrailingBlankLines(data)).toBe('PS C:\\dev>')
+})
+
+test('conteudo no meio nao e tocado', () => {
+  const crlf = '\r\n'
+  const data = 'linha' + crlf + crlf + 'outra'
+  expect(trimTrailingBlankLines(data)).toBe(data)
 })

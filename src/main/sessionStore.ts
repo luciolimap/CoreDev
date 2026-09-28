@@ -78,7 +78,16 @@ function scrollbackPath(dir: string, paneId: string): string {
 
 export function saveScrollback(dir: string, paneId: string, data: string): void {
   mkdirSync(join(dir, SCROLLBACK_DIR), { recursive: true })
-  writeFileSync(scrollbackPath(dir, paneId), capScrollback(data), 'utf-8')
+  writeFileSync(scrollbackPath(dir, paneId), capScrollback(trimTrailingBlankLines(data)), 'utf-8')
+}
+
+/**
+ * O dump do `SerializeAddon` inclui a viewport inteira, linhas vazias e tudo.
+ * Sem podar, a sessão restaurada aparece com um bloco em branco entre o último
+ * comando e o separador — do tamanho do que sobrava de tela.
+ */
+export function trimTrailingBlankLines(data: string): string {
+  return data.replace(/(?:[ \t]*\r?\n)+$/, '')
 }
 
 /**
