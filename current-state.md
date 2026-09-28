@@ -29,7 +29,6 @@ Atualizado: 2026-09-28
 - Revisão de defeitos rodada em 2026-09-28: 9 achados, 8 corrigidos. Fica em aberto o (c) do
   achado sobre `cwdByPane`: um evento `pty:cwd` que chegue antes de o renderer registrar o
   `ptyId` do spawn é descartado em silêncio.
-
 - Aceite manual das fases 4 a 7 ainda não rodado ponta a ponta (a confirmar):
   `specs/2026-09-28-fases-4-a-7.md`.
 - Fase 7 incompleta de propósito: sem assinatura de código, sem auto-update, sem tela de
