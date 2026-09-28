@@ -29,8 +29,10 @@ Atualizado: 2026-09-28
 - Revisão de defeitos rodada em 2026-09-28: 9 achados, 8 corrigidos. Fica em aberto o (c) do
   achado sobre `cwdByPane`: um evento `pty:cwd` que chegue antes de o renderer registrar o
   `ptyId` do spawn é descartado em silêncio.
-- Aceite manual das fases 4 a 7 ainda não rodado ponta a ponta (a confirmar):
-  `specs/2026-09-28-fases-4-a-7.md`.
+- Branch `fases-4-a-7` (16 commits) **não** foi integrada: falta aceite. Verificados em
+  2026-09-28: layout restaurado, scrollback restaurado com separador, descoberta de projetos
+  na pasta raiz. A confirmar: `cwd` por OSC 7 no PowerShell do usuário (aceite 3), painel de
+  GitHub e checkout de PR (aceite 4), paleta `Ctrl/Cmd+K` (aceite 5).
 - Fase 7 incompleta de propósito: sem assinatura de código, sem auto-update, sem tela de
   preferências, sem export/import de configuração. As duas primeiras exigem certificado
   Authenticode e conta Apple paga.
