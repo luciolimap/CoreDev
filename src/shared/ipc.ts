@@ -75,6 +75,8 @@ export interface RecentProjects {
   lastActivePath: string | null
   /** Projetos fixados no topo da sidebar. */
   pinned: string[]
+  /** Pasta raiz varrida na abertura; `null` enquanto o usuário não escolher uma. */
+  projectsRoot: string | null
 }
 
 export const IPC_CHANNELS = {
@@ -90,6 +92,8 @@ export const IPC_CHANNELS = {
   PROJECT_LIST_RECENTS: 'project:listRecents',
   PROJECT_SET_ACTIVE: 'project:setActive',
   PROJECT_TOGGLE_PIN: 'project:togglePin',
+  PROJECT_PICK_ROOT: 'project:pickRoot',
+  PROJECT_CREATE: 'project:create',
   CLAUDE_CHECK_BINARY: 'claude:checkBinary',
   GITHUB_LIST_PULLS: 'github:listPulls',
   GITHUB_LIST_ISSUES: 'github:listIssues',

@@ -62,7 +62,9 @@ const hub = {
       ipcRenderer.send(IPC_CHANNELS.PROJECT_SET_ACTIVE, rootPath)
     },
     togglePin: (rootPath: string): Promise<string[]> =>
-      ipcRenderer.invoke(IPC_CHANNELS.PROJECT_TOGGLE_PIN, rootPath)
+      ipcRenderer.invoke(IPC_CHANNELS.PROJECT_TOGGLE_PIN, rootPath),
+    pickRoot: (): Promise<RecentProjects> => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_PICK_ROOT),
+    create: (): Promise<ProjectInfo | null> => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_CREATE)
   },
   session: {
     load: (): Promise<SessionSnapshot | null> => ipcRenderer.invoke(IPC_CHANNELS.SESSION_LOAD),

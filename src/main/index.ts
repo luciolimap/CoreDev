@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { mkdirSync } from 'fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
@@ -31,10 +32,32 @@ import {
   detectRepo,
   getLastActiveProjectPath,
   getPinnedProjectPaths,
+  getProjectsRoot,
   getRecentProjectPaths,
   setLastActiveProjectPath,
+  setProjectsRoot,
   togglePinnedProject
 } from './projectService'
+import { discoverProjectPaths } from './projectScan'
+
+/**
+ * Projetos explicitamente adicionados primeiro, na ordem de inserção; depois os
+ * descobertos na pasta raiz, em ordem alfabética. A raiz é varrida a cada
+ * chamada, então uma pasta criada fora do app aparece na próxima abertura.
+ */
+function listProjects(): RecentProjects {
+  const recents = getRecentProjectPaths()
+  const root = getProjectsRoot()
+  const discovered = root
+    ? discoverProjectPaths(root).filter((path) => !recents.includes(path))
+    : []
+  return {
+    projects: [...recents, ...discovered].map((rootPath) => detectRepo(rootPath)),
+    lastActivePath: getLastActiveProjectPath(),
+    pinned: getPinnedProjectPaths(),
+    projectsRoot: root
+  }
+}
 
 let mainWindow: BrowserWindow | null = null
 const ptyManager = new PtyManager(() => mainWindow?.webContents ?? null)
@@ -116,12 +139,33 @@ app.whenReady().then(() => {
     return detectRepo(rootPath)
   })
 
-  ipcMain.handle(IPC_CHANNELS.PROJECT_LIST_RECENTS, (): RecentProjects => {
-    return {
-      projects: getRecentProjectPaths().map((rootPath) => detectRepo(rootPath)),
-      lastActivePath: getLastActiveProjectPath(),
-      pinned: getPinnedProjectPaths()
-    }
+  ipcMain.handle(IPC_CHANNELS.PROJECT_LIST_RECENTS, (): RecentProjects => listProjects())
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_PICK_ROOT, async (): Promise<RecentProjects> => {
+    if (!mainWindow) return listProjects()
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: 'Pasta raiz de projetos'
+    })
+    const root = result.filePaths[0]
+    if (!result.canceled && root) setProjectsRoot(root)
+    return listProjects()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_CREATE, async (): Promise<ProjectInfo | null> => {
+    if (!mainWindow) return null
+    const root = getProjectsRoot()
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Criar projeto',
+      buttonLabel: 'Criar',
+      ...(root ? { defaultPath: join(root, 'novo-projeto') } : {}),
+      properties: ['createDirectory']
+    })
+    if (result.canceled || !result.filePath) return null
+    mkdirSync(result.filePath, { recursive: true })
+    addRecentProject(result.filePath)
+    setLastActiveProjectPath(result.filePath)
+    return detectRepo(result.filePath)
   })
 
   ipcMain.handle(IPC_CHANNELS.PROJECT_TOGGLE_PIN, (_event, rootPath: string): string[] =>

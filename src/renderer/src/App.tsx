@@ -62,6 +62,15 @@ function App(): React.JSX.Element {
     if (info) openProject(info, claudeStatus.available ? 'claude' : undefined)
   }, [sessionChecked, loadingRecents, claudeStatus, layout, lastActivePath, projects, openProject])
 
+  const pickRoot = useCallback(async (): Promise<void> => {
+    hydrateRecents(await window.hub.project.pickRoot())
+  }, [hydrateRecents])
+
+  const createProject = useCallback(async (): Promise<void> => {
+    const created = await window.hub.project.create()
+    if (created) openProject(created, claudeStatus?.available ? 'claude' : undefined)
+  }, [openProject, claudeStatus])
+
   const pickProject = useCallback(async (): Promise<void> => {
     const picked = await window.hub.project.pickDirectory()
     if (picked) openProject(picked, claudeStatus?.available ? 'claude' : undefined)
@@ -100,7 +109,12 @@ function App(): React.JSX.Element {
       {paletteOpen && (
         <CommandPalette onClose={() => setPaletteOpen(false)} onAddProject={pickProject} />
       )}
-      <Sidebar onAddProject={pickProject} claudeAvailable={claudeStatus.available} />
+      <Sidebar
+        onAddProject={pickProject}
+        onCreateProject={createProject}
+        onPickRoot={pickRoot}
+        claudeAvailable={claudeStatus.available}
+      />
       {!layout ? (
         <div className="app-shell-empty">
           <div className="empty-state">

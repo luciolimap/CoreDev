@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createRemoveUpdate, getLeaves, updateTree } from 'react-mosaic-component'
 import type { MosaicDirection, MosaicNode } from 'react-mosaic-component'
-import type { PaneKind, ProjectInfo, SessionSnapshot } from '../../../shared/ipc'
+import type { PaneKind, ProjectInfo, RecentProjects, SessionSnapshot } from '../../../shared/ipc'
 import { getPtyId, releaseTerminal } from '../terminal/terminalRegistry'
 import { findPanePath } from './mosaicTree'
 
@@ -22,6 +22,8 @@ interface PaneStoreState {
   lastActivePath: string | null
   /** Projetos fixados no topo da sidebar; o resto mantém a ordem de inserção. */
   pinned: string[]
+  /** Pasta raiz varrida na abertura; `null` enquanto o usuário não escolher uma. */
+  projectsRoot: string | null
 
   /** Canvas único e compartilhado: panes de projetos diferentes podem ficar lado a lado. */
   layout: MosaicNode<string> | null
@@ -29,11 +31,7 @@ interface PaneStoreState {
   focusedPaneId: string | null
   zoomedPaneId: string | null
 
-  hydrateRecents: (data: {
-    projects: ProjectInfo[]
-    lastActivePath: string | null
-    pinned: string[]
-  }) => void
+  hydrateRecents: (data: RecentProjects) => void
   togglePin: (rootPath: string) => void
   /** Restaura layout e panes de uma sessão anterior; tem precedência sobre o auto-open. */
   hydrateSession: (snapshot: SessionSnapshot) => void
@@ -78,16 +76,17 @@ export const usePaneStore = create<PaneStoreState>((set, get) => ({
   order: [],
   lastActivePath: null,
   pinned: [],
+  projectsRoot: null,
   layout: null,
   panes: {},
   focusedPaneId: null,
   zoomedPaneId: null,
 
-  hydrateRecents: ({ projects, lastActivePath, pinned }): void => {
+  hydrateRecents: ({ projects, lastActivePath, pinned, projectsRoot }): void => {
     const byPath: Record<string, ProjectInfo> = {}
     for (const info of projects) byPath[info.rootPath] = info
     const order = projects.map((info) => info.rootPath)
-    set({ projects: byPath, order, lastActivePath, pinned })
+    set({ projects: byPath, order, lastActivePath, pinned, projectsRoot })
   },
 
   togglePin: (rootPath): void => {

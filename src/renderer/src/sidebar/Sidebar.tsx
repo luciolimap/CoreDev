@@ -3,13 +3,21 @@ import { usePaneStore } from '../layout/paneStore'
 
 interface SidebarProps {
   onAddProject: () => void
+  onCreateProject: () => void
+  onPickRoot: () => void
   claudeAvailable: boolean
 }
 
-function Sidebar({ onAddProject, claudeAvailable }: SidebarProps): React.JSX.Element {
+function Sidebar({
+  onAddProject,
+  onCreateProject,
+  onPickRoot,
+  claudeAvailable
+}: SidebarProps): React.JSX.Element {
   const order = usePaneStore((state) => state.order)
   const projects = usePaneStore((state) => state.projects)
   const pinned = usePaneStore((state) => state.pinned)
+  const projectsRoot = usePaneStore((state) => state.projectsRoot)
   const openProject = usePaneStore((state) => state.openProject)
   const togglePin = usePaneStore((state) => state.togglePin)
   const focusedProjectPath = usePaneStore((state) =>
@@ -27,8 +35,26 @@ function Sidebar({ onAddProject, claudeAvailable }: SidebarProps): React.JSX.Ele
     <aside className="sidebar">
       <div className="sidebar-header">
         <span className="sidebar-title">Projetos</span>
-        <button className="sidebar-add-btn" title="Adicionar projeto" onClick={onAddProject}>
+        <button className="sidebar-add-btn" title="Criar projeto novo" onClick={onCreateProject}>
+          ✳
+        </button>
+        <button
+          className="sidebar-add-btn"
+          title="Adicionar projeto existente"
+          onClick={onAddProject}
+        >
           ＋
+        </button>
+        <button
+          className="sidebar-add-btn"
+          title={
+            projectsRoot
+              ? `Pasta raiz: ${projectsRoot} (clique para trocar)`
+              : 'Escolher a pasta raiz de projetos'
+          }
+          onClick={onPickRoot}
+        >
+          ⌂
         </button>
       </div>
       <div className="sidebar-list">
@@ -61,6 +87,11 @@ function Sidebar({ onAddProject, claudeAvailable }: SidebarProps): React.JSX.Ele
             </div>
           )
         })}
+        {displayOrder.length === 0 && !projectsRoot && (
+          <p className="sidebar-hint">
+            Escolha a pasta raiz em ⌂ para listar seus projetos automaticamente.
+          </p>
+        )}
       </div>
     </aside>
   )

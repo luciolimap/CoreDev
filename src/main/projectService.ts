@@ -13,6 +13,8 @@ interface Prefs {
   lastActiveProject?: string
   /** Projetos fixados no topo da sidebar; a ordem de inserção dos demais não muda. */
   pinnedProjects?: string[]
+  /** Pasta raiz varrida na abertura: todo subdiretório dela vira projeto na sidebar. */
+  projectsRoot?: string
 }
 
 const MAX_RECENT_PROJECTS = 20
@@ -50,6 +52,15 @@ export function getLastActiveProjectPath(): string | null {
 
 export function setLastActiveProjectPath(rootPath: string): void {
   writePrefs({ ...readPrefs(), lastActiveProject: rootPath })
+}
+
+export function getProjectsRoot(): string | null {
+  const root = readPrefs().projectsRoot
+  return root && existsSync(root) ? root : null
+}
+
+export function setProjectsRoot(root: string): void {
+  writePrefs({ ...readPrefs(), projectsRoot: root })
 }
 
 export function getPinnedProjectPaths(): string[] {
