@@ -30,8 +30,10 @@ import {
   checkClaudeBinary,
   detectRepo,
   getLastActiveProjectPath,
+  getPinnedProjectPaths,
   getRecentProjectPaths,
-  setLastActiveProjectPath
+  setLastActiveProjectPath,
+  togglePinnedProject
 } from './projectService'
 
 let mainWindow: BrowserWindow | null = null
@@ -117,9 +119,14 @@ app.whenReady().then(() => {
   ipcMain.handle(IPC_CHANNELS.PROJECT_LIST_RECENTS, (): RecentProjects => {
     return {
       projects: getRecentProjectPaths().map((rootPath) => detectRepo(rootPath)),
-      lastActivePath: getLastActiveProjectPath()
+      lastActivePath: getLastActiveProjectPath(),
+      pinned: getPinnedProjectPaths()
     }
   })
+
+  ipcMain.handle(IPC_CHANNELS.PROJECT_TOGGLE_PIN, (_event, rootPath: string): string[] =>
+    togglePinnedProject(rootPath)
+  )
 
   ipcMain.on(IPC_CHANNELS.PROJECT_SET_ACTIVE, (_event, rootPath: string) => {
     setLastActiveProjectPath(rootPath)

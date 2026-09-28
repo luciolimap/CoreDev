@@ -7,10 +7,12 @@ import type { ClaudeBinaryStatus, ProjectInfo } from '../shared/ipc'
 const PREFS_PATH = join(app.getPath('userData'), 'prefs.json')
 
 interface Prefs {
-  /** Ordem estável de inserção — nunca reordenada ao selecionar (v1: sem "fixar"). */
+  /** Ordem estável de inserção — nunca reordenada ao selecionar; fixar só move para o topo. */
   recentProjects?: string[]
   /** Último projeto ativo, usado só pra restaurar o pane no boot (independe da ordem da sidebar). */
   lastActiveProject?: string
+  /** Projetos fixados no topo da sidebar; a ordem de inserção dos demais não muda. */
+  pinnedProjects?: string[]
 }
 
 const MAX_RECENT_PROJECTS = 20
@@ -48,6 +50,20 @@ export function getLastActiveProjectPath(): string | null {
 
 export function setLastActiveProjectPath(rootPath: string): void {
   writePrefs({ ...readPrefs(), lastActiveProject: rootPath })
+}
+
+export function getPinnedProjectPaths(): string[] {
+  return (readPrefs().pinnedProjects ?? []).filter((p) => existsSync(p))
+}
+
+export function togglePinnedProject(rootPath: string): string[] {
+  const prefs = readPrefs()
+  const pinned = prefs.pinnedProjects ?? []
+  const next = pinned.includes(rootPath)
+    ? pinned.filter((p) => p !== rootPath)
+    : [...pinned, rootPath]
+  writePrefs({ ...prefs, pinnedProjects: next })
+  return next
 }
 
 /** Parseia a URL do remote `origin` de um `.git/config` no formato INI. */

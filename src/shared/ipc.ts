@@ -73,6 +73,8 @@ export interface RecentProjects {
   projects: ProjectInfo[]
   /** Último projeto ativo antes de fechar; usado só pra restaurar o pane no boot. */
   lastActivePath: string | null
+  /** Projetos fixados no topo da sidebar. */
+  pinned: string[]
 }
 
 export const IPC_CHANNELS = {
@@ -87,6 +89,7 @@ export const IPC_CHANNELS = {
   PROJECT_PICK_DIRECTORY: 'project:pickDirectory',
   PROJECT_LIST_RECENTS: 'project:listRecents',
   PROJECT_SET_ACTIVE: 'project:setActive',
+  PROJECT_TOGGLE_PIN: 'project:togglePin',
   CLAUDE_CHECK_BINARY: 'claude:checkBinary',
   GITHUB_LIST_PULLS: 'github:listPulls',
   GITHUB_LIST_ISSUES: 'github:listIssues',

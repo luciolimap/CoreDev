@@ -20,6 +20,8 @@ interface PaneStoreState {
   order: string[]
   /** Último projeto ativo antes de fechar (persistido no main) — só pra restaurar no boot. */
   lastActivePath: string | null
+  /** Projetos fixados no topo da sidebar; o resto mantém a ordem de inserção. */
+  pinned: string[]
 
   /** Canvas único e compartilhado: panes de projetos diferentes podem ficar lado a lado. */
   layout: MosaicNode<string> | null
@@ -27,7 +29,12 @@ interface PaneStoreState {
   focusedPaneId: string | null
   zoomedPaneId: string | null
 
-  hydrateRecents: (data: { projects: ProjectInfo[]; lastActivePath: string | null }) => void
+  hydrateRecents: (data: {
+    projects: ProjectInfo[]
+    lastActivePath: string | null
+    pinned: string[]
+  }) => void
+  togglePin: (rootPath: string) => void
   /** Restaura layout e panes de uma sessão anterior; tem precedência sobre o auto-open. */
   hydrateSession: (snapshot: SessionSnapshot) => void
   /** Foca o pane do projeto se já existir no canvas; senão cria um (split do pane focado). */
@@ -70,16 +77,21 @@ export const usePaneStore = create<PaneStoreState>((set, get) => ({
   projects: {},
   order: [],
   lastActivePath: null,
+  pinned: [],
   layout: null,
   panes: {},
   focusedPaneId: null,
   zoomedPaneId: null,
 
-  hydrateRecents: ({ projects, lastActivePath }): void => {
+  hydrateRecents: ({ projects, lastActivePath, pinned }): void => {
     const byPath: Record<string, ProjectInfo> = {}
     for (const info of projects) byPath[info.rootPath] = info
     const order = projects.map((info) => info.rootPath)
-    set({ projects: byPath, order, lastActivePath })
+    set({ projects: byPath, order, lastActivePath, pinned })
+  },
+
+  togglePin: (rootPath): void => {
+    void window.hub.project.togglePin(rootPath).then((pinned) => set({ pinned }))
   },
 
   hydrateSession: ({ layout, panes, focusedPaneId, zoomedPaneId }): void => {

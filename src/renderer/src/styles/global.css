@@ -526,3 +526,36 @@ body {
   color: var(--text-dim);
   cursor: default;
 }
+
+/* Fixar projeto no topo da sidebar */
+
+.sidebar-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.sidebar-row .sidebar-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-pin {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.sidebar-row:hover .sidebar-pin {
+  color: var(--text-dim);
+}
+
+.sidebar-pin-active,
+.sidebar-row:hover .sidebar-pin-active {
+  color: var(--accent);
+}
