@@ -78,9 +78,20 @@ function scrollbackPath(dir: string, paneId: string): string {
 
 export function saveScrollback(dir: string, paneId: string, data: string): void {
   mkdirSync(join(dir, SCROLLBACK_DIR), { recursive: true })
-  // Corta o começo, não o fim: o que interessa ao retomar é o que aconteceu por último.
-  const capped = data.length > SCROLLBACK_CAP_BYTES ? data.slice(-SCROLLBACK_CAP_BYTES) : data
-  writeFileSync(scrollbackPath(dir, paneId), capped, 'utf-8')
+  writeFileSync(scrollbackPath(dir, paneId), capScrollback(data), 'utf-8')
+}
+
+/**
+ * Corta o começo, não o fim: o que interessa ao retomar é o que aconteceu por
+ * último. O corte anda até o próximo início de sequência de escape — cair no
+ * meio de um `ESC[38;2;R;G;Bm` faria o xterm comer o texto seguinte como
+ * parâmetro e o topo do scrollback restaurado sairia corrompido.
+ */
+export function capScrollback(data: string): string {
+  if (data.length <= SCROLLBACK_CAP_BYTES) return data
+  const tail = data.slice(-SCROLLBACK_CAP_BYTES)
+  const firstEscape = tail.indexOf('')
+  return firstEscape === -1 ? tail : tail.slice(firstEscape)
 }
 
 export function loadScrollback(dir: string, paneId: string): string | null {

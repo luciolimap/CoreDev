@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePaneStore } from '../layout/paneStore'
-import { getPtyId } from '../terminal/terminalRegistry'
 import type { GhIssue, GhPullRequest, GhResult } from '../../../shared/ipc'
 
 interface GitHubPaneProps {
@@ -31,23 +30,27 @@ function FailureState({ result }: { result: Extract<GhResult<never>, { ok: false
 
 function GitHubPane({ projectPath }: GitHubPaneProps): React.JSX.Element {
   const project = usePaneStore((state) => state.projects[projectPath])
-  const panes = usePaneStore((state) => state.panes)
   const addPane = usePaneStore((state) => state.addPane)
 
   const [view, setView] = useState<View>('pulls')
   const [pulls, setPulls] = useState<GhResult<GhPullRequest> | null>(null)
   const [issues, setIssues] = useState<GhResult<GhIssue> | null>(null)
   const [loading, setLoading] = useState(false)
+  // Alternar de aba rápido deixava o painel em branco: a resposta da consulta
+  // antiga desligava o "carregando" enquanto a nova ainda estava voando.
+  const requestId = useRef(0)
 
   const repo = project?.ghOwner && project?.ghRepo ? `${project.ghOwner}/${project.ghRepo}` : null
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!repo) return
+    const id = ++requestId.current
     setLoading(true)
     const result =
       view === 'pulls'
         ? await window.hub.github.listPulls(repo)
         : await window.hub.github.listIssues(repo)
+    if (id !== requestId.current) return
     if (view === 'pulls') setPulls(result as GhResult<GhPullRequest>)
     else setIssues(result as GhResult<GhIssue>)
     setLoading(false)
@@ -58,22 +61,13 @@ function GitHubPane({ projectPath }: GitHubPaneProps): React.JSX.Element {
   }, [refresh])
 
   /**
-   * O checkout roda no terminal do projeto, à vista (ROADMAP §6): o dev vê o
-   * comando e o resultado. Sem terminal daquele projeto no canvas, abre um já
-   * com o checkout como `bootCommand` — assim a espera pelo shell ficar pronto
-   * é a mesma do resto do app, sem um caminho de espera só para este caso.
+   * O checkout roda à vista, sempre num terminal novo (ROADMAP §6). Reaproveitar
+   * um terminal existente do projeto não serve: todo terminal de projeto nasce
+   * com `claude` rodando, e o comando cairia no prompt do Claude Code em vez do
+   * shell — o checkout nunca aconteceria.
    */
   function checkoutPull(number: number): void {
-    const command = `gh pr checkout ${number}`
-    const terminalPaneId = Object.keys(panes).find(
-      (id) => panes[id]?.projectPath === projectPath && panes[id]?.kind === 'terminal'
-    )
-    if (!terminalPaneId) {
-      addPane(projectPath, 'terminal', command)
-      return
-    }
-    const ptyId = getPtyId(terminalPaneId)
-    if (ptyId) window.hub.pty.write(ptyId, `${command}\r`)
+    addPane(projectPath, 'terminal', `gh pr checkout ${number}`)
   }
 
   if (!repo) {

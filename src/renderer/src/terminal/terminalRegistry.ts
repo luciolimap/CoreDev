@@ -74,6 +74,7 @@ export function releaseTerminal(paneId: string): void {
   if (!entry) return
   entry.term.dispose()
   registry.delete(paneId)
+  cwdByPane.delete(paneId)
 }
 
 export function getPtyId(paneId: string): string | null {
@@ -82,7 +83,11 @@ export function getPtyId(paneId: string): string | null {
 
 export function setPtyId(paneId: string, ptyId: string | null): void {
   const entry = registry.get(paneId)
-  if (entry) entry.ptyId = ptyId
+  if (!entry) return
+  entry.ptyId = ptyId
+  // Pty novo começa sem cwd rastreado: herdar o do pty morto persistiria um
+  // diretório onde o shell não está — e o powershell.exe nem emite OSC 7.
+  if (ptyId === null) cwdByPane.delete(paneId)
 }
 
 /**

@@ -23,6 +23,14 @@ const RESIZE_DEBOUNCE_MS = 100
 const SHELL_QUIET_MS = 250
 const SHELL_READY_TIMEOUT_MS = 3000
 
+/**
+ * Atraso do `bootCommand` no caminho de reiniciar. Aqui não dá para reaproveitar
+ * a quiescência: o listener de dados que a alimenta vive no efeito de montagem, e
+ * o restart acontece fora dele. Generoso de propósito — é o caminho raro, e errar
+ * para menos perde o comando. `SHELL_QUIET_MS` é janela de silêncio, não atraso.
+ */
+const RESTART_BOOT_DELAY_MS = 1000
+
 function previousSessionSeparator(): string {
   const when = new Date().toLocaleString()
   return `\r\n\x1b[2m─── fim da sessão anterior · ${when} ───\x1b[0m\r\n`
@@ -160,7 +168,7 @@ function TerminalPanel({
       window.hub.pty.spawn(spawnRequest(paneId, cwd, fallbackCwd, cols, rows))
     )
     if (bootCommand) {
-      setTimeout(() => window.hub.pty.write(newPtyId, `${bootCommand}\r`), SHELL_QUIET_MS)
+      setTimeout(() => window.hub.pty.write(newPtyId, `${bootCommand}\r`), RESTART_BOOT_DELAY_MS)
     }
   }
 

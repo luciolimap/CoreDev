@@ -3,7 +3,14 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { SESSION_VERSION, type SessionSnapshot } from '../shared/ipc'
-import { loadScrollback, loadSession, pruneScrollback, saveScrollback, saveSession } from './sessionStore'
+import {
+  capScrollback,
+  loadScrollback,
+  loadSession,
+  pruneScrollback,
+  saveScrollback,
+  saveSession
+} from './sessionStore'
 
 let dir: string
 
@@ -74,4 +81,15 @@ test('paneId com caracteres de caminho nao escapa do diretorio', () => {
   saveScrollback(dir, '../fuga', 'a')
   expect(loadScrollback(dir, '../fuga')).toBe('a')
   expect(existsSync(join(dir, '..', 'fuga.txt'))).toBe(false)
+})
+
+test('o corte anda ate o proximo escape para nao partir uma sequencia ANSI', () => {
+  const escape = String.fromCharCode(27)
+  const head = 'x'.repeat(256 * 1024)
+  const cut = capScrollback(head + escape + '[31mvermelho')
+  expect(cut.startsWith(escape + '[31m')).toBe(true)
+})
+
+test('scrollback sem escape nenhum e cortado pelo tamanho', () => {
+  expect(capScrollback('y'.repeat(300 * 1024)).length).toBe(256 * 1024)
 })

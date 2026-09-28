@@ -44,14 +44,21 @@ function App(): React.JSX.Element {
   // A sessão anterior tem precedência sobre o auto-open: só depois de saber
   // que não há layout salvo é que o último projeto ativo é aberto sozinho.
   // O autosave só liga aqui, senão o estado vazio do boot sobrescreveria o arquivo.
-  useEffect((): (() => void) | undefined => {
+  useEffect((): (() => void) => {
     let stop: (() => void) | undefined
+    let cancelled = false
     window.hub.session.load().then((snapshot) => {
       if (snapshot?.layout) hydrateSession(snapshot)
       setSessionChecked(true)
       stop = startSessionSync()
+      // O cleanup pode ter rodado antes desta promise resolver (StrictMode monta,
+      // desmonta e monta de novo); sem isto ficavam dois autosaves vivos.
+      if (cancelled) stop()
     })
-    return () => stop?.()
+    return () => {
+      cancelled = true
+      stop?.()
+    }
   }, [hydrateSession])
 
   // Abre o último projeto ativo automaticamente assim que a lista e o status
@@ -83,6 +90,7 @@ function App(): React.JSX.Element {
       if (!mod) return
       if (event.key.toLowerCase() === 'k') {
         event.preventDefault()
+        event.stopPropagation()
         setPaletteOpen((open) => !open)
         return
       }
@@ -96,8 +104,11 @@ function App(): React.JSX.Element {
         focusByIndex(Number(event.key) - 1)
       }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    // Captura, não bolha: o xterm.js trata o keydown antes e mapeia Ctrl+K para
+    // `` (kill-line), que ia parar no pty. Ele chama `preventDefault` mas não
+    // `stopPropagation`, então a paleta abria junto com o comando indo para o shell.
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [focusedPaneId, toggleZoom, focusByIndex])
 
   if (loadingRecents || claudeStatus === null || !sessionChecked) {
@@ -107,7 +118,11 @@ function App(): React.JSX.Element {
   return (
     <div className="app-root">
       {paletteOpen && (
-        <CommandPalette onClose={() => setPaletteOpen(false)} onAddProject={pickProject} />
+        <CommandPalette
+          onClose={() => setPaletteOpen(false)}
+          onAddProject={pickProject}
+          claudeAvailable={claudeStatus.available}
+        />
       )}
       <Sidebar
         onAddProject={pickProject}

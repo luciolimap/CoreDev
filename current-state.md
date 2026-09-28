@@ -19,8 +19,16 @@ Atualizado: 2026-09-28
   projeto) — ver `decisions/2026-09-28-github-pelo-gh-cli.md`. Sem device flow, sem token
   guardado, sem Octokit.
 - Paleta de comandos em `Ctrl/Cmd+K` e fixar projeto no topo da sidebar.
+- Descoberta automática de projetos: escolhida uma pasta raiz (⌂ na sidebar), todo
+  subdiretório de primeiro nível dela vira projeto, recalculado a cada abertura do app.
+  Criar projeto pelo próprio app (✳) usa o diálogo nativo de salvar.
+  Spec: `specs/2026-09-28-descoberta-de-projetos.md`.
 
 ## Frentes abertas
+
+- Revisão de defeitos rodada em 2026-09-28: 9 achados, 8 corrigidos. Fica em aberto o (c) do
+  achado sobre `cwdByPane`: um evento `pty:cwd` que chegue antes de o renderer registrar o
+  `ptyId` do spawn é descartado em silêncio.
 
 - Aceite manual das fases 4 a 7 ainda não rodado ponta a ponta (a confirmar):
   `specs/2026-09-28-fases-4-a-7.md`.

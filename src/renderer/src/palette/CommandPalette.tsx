@@ -10,6 +10,7 @@ interface Command {
 interface CommandPaletteProps {
   onClose: () => void
   onAddProject: () => void
+  claudeAvailable: boolean
 }
 
 /** Busca por substring simples. Uma lib de fuzzy para ~15 comandos não se paga. */
@@ -17,7 +18,7 @@ function normalize(text: string): string {
   return text.toLowerCase()
 }
 
-function CommandPalette({ onClose, onAddProject }: CommandPaletteProps): React.JSX.Element {
+function CommandPalette({ onClose, onAddProject, claudeAvailable }: CommandPaletteProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
@@ -62,7 +63,7 @@ function CommandPalette({ onClose, onAddProject }: CommandPaletteProps): React.J
       list.push({
         id: `focus-${rootPath}`,
         label: `Ir para o projeto: ${info.name}`,
-        run: () => openProject(info)
+        run: () => openProject(info, claudeAvailable ? 'claude' : undefined)
       })
     }
     return list
@@ -76,7 +77,8 @@ function CommandPalette({ onClose, onAddProject }: CommandPaletteProps): React.J
     closePane,
     toggleZoom,
     openProject,
-    addPane
+    addPane,
+    claudeAvailable
   ])
 
   const matches = useMemo(() => {
