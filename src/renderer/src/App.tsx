@@ -146,6 +146,7 @@ function App(): React.JSX.Element {
                 <TerminalPanel
                   paneId={zoomedPaneId}
                   cwd={panes[zoomedPaneId]?.cwd}
+                  fallbackCwd={panes[zoomedPaneId]?.projectPath}
                   bootCommand={panes[zoomedPaneId]?.bootCommand}
                 />
               </PaneFrame>

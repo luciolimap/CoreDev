@@ -17,6 +17,7 @@ function MosaicRoot(): React.JSX.Element {
           <TerminalPanel
             paneId={paneId}
             cwd={panes[paneId]?.cwd}
+            fallbackCwd={panes[paneId]?.projectPath}
             bootCommand={panes[paneId]?.bootCommand}
           />
         </PaneFrame>

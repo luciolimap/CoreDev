@@ -12,6 +12,8 @@ export interface AppInfo {
 export interface PtySpawnRequest {
   paneId: string
   cwd?: string
+  /** Usado se `cwd` não existir mais no disco; se este também sumiu, cai no home. */
+  fallbackCwd?: string
   shell?: string
   cols: number
   rows: number

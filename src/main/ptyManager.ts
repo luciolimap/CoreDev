@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import { existsSync } from 'fs'
 import os from 'os'
 import type { IPty } from 'node-pty'
 import * as pty from 'node-pty'
@@ -34,6 +35,18 @@ function shellArgs(): string[] {
   return ['-l']
 }
 
+/**
+ * Diretório restaurado pode ter sido apagado ou renomeado desde a última
+ * sessão. O pty falharia no spawn; melhor abrir em algum lugar válido e
+ * avisar no terminal (quem avisa é o renderer, comparando o cwd devolvido).
+ */
+function firstExistingDir(...candidates: (string | undefined)[]): string {
+  for (const candidate of candidates) {
+    if (candidate && existsSync(candidate)) return candidate
+  }
+  return os.homedir()
+}
+
 export class PtyManager {
   private ptys = new Map<string, PtyEntry>()
   private getWebContents: () => WebContents | null
@@ -43,13 +56,20 @@ export class PtyManager {
     this.getWebContents = getWebContents
   }
 
-  spawn(opts: { paneId: string; cwd?: string; shell?: string; cols: number; rows: number }): {
+  spawn(opts: {
+    paneId: string
+    cwd?: string
+    fallbackCwd?: string
+    shell?: string
+    cols: number
+    rows: number
+  }): {
     ptyId: string
     shell: string
     cwd: string
   } {
     const shell = opts.shell ?? defaultShell()
-    const cwd = opts.cwd ?? os.homedir()
+    const cwd = firstExistingDir(opts.cwd, opts.fallbackCwd)
     const proc = pty.spawn(shell, shellArgs(), {
       name: 'xterm-256color',
       cols: opts.cols,

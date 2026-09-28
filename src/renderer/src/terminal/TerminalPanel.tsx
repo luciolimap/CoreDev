@@ -5,33 +5,52 @@ import type { PtySpawnRequest } from '../../../shared/ipc'
 interface TerminalPanelProps {
   paneId: string
   cwd?: string | undefined
+  /** Usado quando o `cwd` salvo não existe mais no disco (projeto movido ou apagado). */
+  fallbackCwd?: string | undefined
   /** Comando escrito no pty logo após um spawn novo (não em reconexão a um pty existente). */
   bootCommand?: string | undefined
 }
 
 const RESIZE_DEBOUNCE_MS = 100
-// Tempo dado ao shell pra terminar de avaliar o profile antes de escrever o
-// bootCommand. Heurística simples (ROADMAP.md §6.3, fallback de quiescência);
-// uma sentinela OSC é a solução robusta, mas fica para a Fase 5.
-const BOOT_COMMAND_DELAY_MS = 300
+
+/**
+ * Detecção de "shell pronto" por quiescência (ROADMAP.md §6.3): o `bootCommand`
+ * só é escrito depois que o shell fica um tempo sem emitir nada. Um atraso fixo
+ * erra nos dois sentidos — rápido demais para um profile com nvm/starship,
+ * lento demais para um shell sem profile. O teto existe porque um prompt que
+ * anima (spinner, relógio) nunca fica quieto.
+ */
+const SHELL_QUIET_MS = 250
+const SHELL_READY_TIMEOUT_MS = 3000
 
 function previousSessionSeparator(): string {
   const when = new Date().toLocaleString()
-  return `
-[2m─── fim da sessão anterior · ${when} ───[0m
-`
+  return `\r\n\x1b[2m─── fim da sessão anterior · ${when} ───\x1b[0m\r\n`
+}
+
+function cwdChangedWarning(requested: string, actual: string): string {
+  return `\r\n\x1b[33m${requested} não existe mais — abrindo em ${actual}\x1b[0m\r\n`
 }
 
 function spawnRequest(
   paneId: string,
   cwd: string | undefined,
+  fallbackCwd: string | undefined,
   cols: number,
   rows: number
 ): PtySpawnRequest {
-  return cwd === undefined ? { paneId, cols, rows } : { paneId, cwd, cols, rows }
+  const base: PtySpawnRequest = { paneId, cols, rows }
+  if (cwd !== undefined) base.cwd = cwd
+  if (fallbackCwd !== undefined) base.fallbackCwd = fallbackCwd
+  return base
 }
 
-function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.JSX.Element {
+function TerminalPanel({
+  paneId,
+  cwd,
+  fallbackCwd,
+  bootCommand
+}: TerminalPanelProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const [exited, setExited] = useState<{ exitCode: number } | null>(null)
 
@@ -47,7 +66,22 @@ function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.
 
     const { cols, rows } = entry.term
     const wasAlreadySpawned = getPtyId(paneId) !== null
-    let bootTimer: ReturnType<typeof setTimeout> | null = null
+
+    let bootSent = false
+    let quietTimer: ReturnType<typeof setTimeout> | null = null
+    let hardTimer: ReturnType<typeof setTimeout> | null = null
+
+    function sendBootCommand(ptyId: string): void {
+      if (bootSent || !bootCommand) return
+      bootSent = true
+      window.hub.pty.write(ptyId, `${bootCommand}\r`)
+    }
+
+    function restartQuietWindow(ptyId: string): void {
+      if (quietTimer) clearTimeout(quietTimer)
+      quietTimer = setTimeout(() => sendBootCommand(ptyId), SHELL_QUIET_MS)
+    }
+
     // O scrollback da sessão anterior entra antes do spawn: escrever depois
     // disputaria a tela com a saída do shell novo.
     const restored = claimRestore(paneId)
@@ -60,18 +94,23 @@ function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.
 
     void restored
       .then(() =>
-        ensureSpawned(paneId, () => window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows)))
+        ensureSpawned(paneId, async () => {
+          const res = await window.hub.pty.spawn(spawnRequest(paneId, cwd, fallbackCwd, cols, rows))
+          if (cwd && res.cwd !== cwd) entry.term.write(cwdChangedWarning(cwd, res.cwd))
+          return res
+        })
       )
       .then((ptyId) => {
-        if (!wasAlreadySpawned && bootCommand) {
-          bootTimer = setTimeout(() => {
-            window.hub.pty.write(ptyId, `${bootCommand}\r`)
-          }, BOOT_COMMAND_DELAY_MS)
-        }
+        if (wasAlreadySpawned || !bootCommand) return
+        restartQuietWindow(ptyId)
+        hardTimer = setTimeout(() => sendBootCommand(ptyId), SHELL_READY_TIMEOUT_MS)
       })
 
     const unsubData = window.hub.pty.onData(({ ptyId, chunk }) => {
-      if (ptyId === getPtyId(paneId)) entry.term.write(chunk)
+      if (ptyId !== getPtyId(paneId)) return
+      entry.term.write(chunk)
+      // Enquanto o shell fala, ele não está pronto: adia o bootCommand.
+      if (!bootSent && bootCommand && !wasAlreadySpawned) restartQuietWindow(ptyId)
     })
     const unsubExit = window.hub.pty.onExit(({ ptyId, exitCode }) => {
       if (ptyId === getPtyId(paneId)) setExited({ exitCode })
@@ -95,7 +134,8 @@ function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.
 
     return (): void => {
       if (resizeTimer) clearTimeout(resizeTimer)
-      if (bootTimer) clearTimeout(bootTimer)
+      if (quietTimer) clearTimeout(quietTimer)
+      if (hardTimer) clearTimeout(hardTimer)
       resizeObserver.disconnect()
       unsubData()
       unsubExit()
@@ -106,7 +146,7 @@ function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.
     // paneId (App.tsx só monta o painel depois que bootCommand já é
     // conhecido — ver App.tsx). Mudar só o bootCommand não deve reiniciar
     // o pty nem reescrever o comando numa sessão já em andamento.
-  }, [paneId, cwd])
+  }, [paneId, cwd, fallbackCwd])
 
   async function handleRestart(): Promise<void> {
     const ptyId = getPtyId(paneId)
@@ -117,10 +157,10 @@ function TerminalPanel({ paneId, cwd, bootCommand }: TerminalPanelProps): React.
     entry.term.reset()
     const { cols, rows } = entry.term
     const newPtyId = await ensureSpawned(paneId, () =>
-      window.hub.pty.spawn(spawnRequest(paneId, cwd, cols, rows))
+      window.hub.pty.spawn(spawnRequest(paneId, cwd, fallbackCwd, cols, rows))
     )
     if (bootCommand) {
-      setTimeout(() => window.hub.pty.write(newPtyId, `${bootCommand}\r`), BOOT_COMMAND_DELAY_MS)
+      setTimeout(() => window.hub.pty.write(newPtyId, `${bootCommand}\r`), SHELL_QUIET_MS)
     }
   }
 
